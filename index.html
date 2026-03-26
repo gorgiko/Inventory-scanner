@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory Scanner 2D Fixed</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  #scanner { width: 100%; max-width: 400px; margin-bottom: 20px; border: 2px solid #ccc; }
+  #scanner.success { border-color: green; }
+  input, select, textarea, button { display: block; margin: 10px 0; width: 100%; padding: 8px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+</style>
+</head>
+<body>
+
+<h2>Inventory Scanner 2D Fixed</h2>
+
+<div id="scanner"></div>
+
+<form id="inventoryForm">
+  <input type="text" id="barcode" placeholder="Asset Barcode" readonly>
+  <input type="text" id="location" placeholder="Location Number" required>
+  <select id="condition" required>
+    <option value="">Select Condition</option>
+    <option value="OK">OK</option>
+    <option value="Damaged">Damaged</option>
+    <option value="Needs Repair">Needs Repair</option>
+  </select>
+  <textarea id="description" placeholder="Description / Notes"></textarea>
+  <button type="submit">Save Entry</button>
+</form>
+
+<button id="exportBtn">Export CSV</button>
+
+<h3>Saved Entries</h3>
+<table id="inventoryTable">
+  <thead>
+    <tr>
+      <th>Barcode</th>
+      <th>Location</th>
+      <th>Condition</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+const scannerDiv = document.getElementById("scanner");
+
+// Inventory table
+let inventory = JSON.parse(localStorage.getItem("inventoryData") || "[]");
+const tableBody = document.querySelector("#inventoryTable tbody");
+const renderTable = () => {
+  tableBody.innerHTML = "";
+  inventory.forEach(entry => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${entry.barcode}</td>
+                    <td>${entry.location}</td>
+                    <td>${entry.condition}</td>
+                    <td>${entry.description}</td>`;
+    tableBody.appendChild(tr);
+  });
+};
+renderTable();
+
+// Start scanner with facingMode "environment" (rear camera)
+const html5QrCode = new Html5Qrcode("scanner");
+
+const config = { 
+  fps: 10, 
+  qrbox: 250,
+  formatsToSupport: [
+    Html5QrcodeSupportedFormats.QR_CODE,
+    Html5QrcodeSupportedFormats.DATA_MATRIX,
+    Html5QrcodeSupportedFormats.PDF_417,
+    Html5QrcodeSupportedFormats.AZTEC
+  ],
+  experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+};
+
+// Use facingMode for reliable camera selection
+html5QrCode.start(
+  { facingMode: { exact: "environment" } }, 
+  config,
+  decodedText => {
+    document.getElementById("barcode").value = decodedText;
+    scannerDiv.classList.add("success");
+    setTimeout(() => scannerDiv.classList.remove("success"), 200);
+    const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+    beep.play();
+  },
+  errorMessage => {
+    // optional
+  }
+).catch(err => {
+  console.error("Camera start failed, trying fallback:", err);
+  // fallback: just default camera (no exact facingMode)
+  html5QrCode.start(
+    { facingMode: "user" }, 
+    config,
+    decodedText => {
+      document.getElementById("barcode").value = decodedText;
+      scannerDiv.classList.add("success");
+      setTimeout(() => scannerDiv.classList.remove("success"), 200);
+      const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+      beep.play();
+    },
+    err2 => console.error("Fallback camera failed:", err2)
+  );
+});
+
+// Form handling
+document.getElementById("inventoryForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const entry = {
+    barcode: document.getElementById("barcode").value,
+    location: document.getElementById("location").value,
+    condition: document.getElementById("condition").value,
+    description: document.getElementById("description").value
+  };
+  if(!entry.barcode) { alert("Scan a barcode first!"); return; }
+  inventory.push(entry);
+  localStorage.setItem("inventoryData", JSON.stringify(inventory));
+  renderTable();
+  e.target.reset();
+  document.getElementById("barcode").value = "";
+});
+
+// Export CSV
+document.getElementById("exportBtn").addEventListener("click", () => {
+  if(inventory.length === 0) { alert("No data to export."); return; }
+  let csv = "Barcode,Location,Condition,Description\n";
+  inventory.forEach(row => {
+    csv += `"${row.barcode}","${row.location}","${row.condition}","${row.description}"\n`;
+  });
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "inventory.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
