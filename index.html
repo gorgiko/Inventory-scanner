@@ -8,6 +8,7 @@
   body { font-family: Arial, sans-serif; margin: 20px; }
   #scanner { width: 100%; max-width: 400px; margin-bottom: 20px; border: 2px solid #ccc; }
   #scanner.success { border-color: green; }
+  #message { font-weight: bold; margin-bottom: 10px; }
   input, select, textarea, button { display: block; margin: 10px 0; width: 100%; padding: 8px; }
   table { width: 100%; border-collapse: collapse; margin-top: 20px; }
   th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
@@ -18,6 +19,7 @@
 <h2>Баркод скенер за попис на ОС</h2>
 
 <div id="scanner"></div>
+<div id="message"></div>
 
 <form id="inventoryForm">
   <input type="text" id="barcode" placeholder="Инвентарен број" readonly>
@@ -49,22 +51,30 @@
 <script>
 const scannerDiv = document.getElementById("scanner");
 const barcodeInput = document.getElementById("barcode");
+const tableBody = document.querySelector("#inventoryTable tbody");
+const messageDiv = document.getElementById("message");
+
+let inventory = [];
+let lastScanned = null;
+let audioUnlocked = false;
 
 // Audio setup
 const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 beep.preload = "auto";
-let audioUnlocked = false;
 document.body.addEventListener("click", () => {
   if (!audioUnlocked) {
     beep.play().then(() => { beep.pause(); beep.currentTime = 0; audioUnlocked = true; }).catch(()=>{});
   }
 }, { once: true });
 
-// Inventory data (UI table)
-let inventory = [];
-const tableBody = document.querySelector("#inventoryTable tbody");
+// Show non-blocking messages
+function showMessage(msg, isError=false) {
+  messageDiv.style.color = isError ? "red" : "green";
+  messageDiv.textContent = msg;
+  setTimeout(() => { messageDiv.textContent = ""; }, 2000);
+}
 
-// Render table
+// Render inventory table
 function renderTable() {
   tableBody.innerHTML = "";
   inventory.forEach(entry => {
@@ -77,7 +87,7 @@ function renderTable() {
   });
 }
 
-// QR & barcode scanner
+// QR & barcode scanner setup
 const html5QrCode = new Html5Qrcode("scanner");
 const config = { 
   fps: 10, 
@@ -91,22 +101,17 @@ const config = {
   experimentalFeatures: { useBarCodeDetectorIfSupported: true }
 };
 
-// Stop-and-restart scanner workflow
+// Scanner callback
 function onScanSuccess(decodedText) {
-  // Stop scanner immediately to prevent freezing
-  html5QrCode.stop().then(() => {
-    console.log("Scanner stopped after scan");
-
+  if (decodedText !== lastScanned) {
     barcodeInput.value = decodedText;
     scannerDiv.classList.add("success");
     setTimeout(() => scannerDiv.classList.remove("success"), 200);
 
-    if (audioUnlocked) {
-      beep.currentTime = 0;
-      beep.play().catch(() => {});
-    }
+    if (audioUnlocked) { beep.currentTime = 0; beep.play().catch(()=>{}); }
 
-  }).catch(err => console.error("Failed to stop scanner:", err));
+    lastScanned = decodedText; // Prevent duplicate scan until saved
+  }
 }
 
 // Start scanner
@@ -125,18 +130,18 @@ startScanner();
 // Form submission to Google Sheets
 document.getElementById("inventoryForm").addEventListener("submit", e => {
   e.preventDefault();
-  
+
   const entry = {
     barcode: barcodeInput.value,
     location: document.getElementById("location").value,
     condition: document.getElementById("condition").value,
     description: document.getElementById("description").value
   };
-  
-  if (!entry.barcode) { alert("Scan a barcode first!"); return; }
 
-  const webAppUrl = "https://script.google.com/macros/s/AKfycbxBNbibzHJh-C61P0zxRcCqFS3qHLHqTo-JbM_922vrLxVIctAQ76cI1uaiXNr9d-AHiw/exec"; // <-- Replace with your Apps Script Web App URL
-  
+  if (!entry.barcode) { showMessage("Scan a barcode first!", true); return; }
+
+  const webAppUrl = "YOUR_WEB_APP_URL_HERE"; // Replace with your Apps Script Web App URL
+
   fetch(webAppUrl, {
     method: "POST",
     body: JSON.stringify(entry)
@@ -149,22 +154,17 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
     if (response.status === "success") {
       inventory.push(entry);
       renderTable();
-      e.target.reset();
+      document.getElementById("inventoryForm").reset();
       barcodeInput.value = "";
-      alert("Saved to Google Sheet!");
-
-      // Restart scanner for next item
-      startScanner();
-
+      lastScanned = null; // allow scanning next item
+      showMessage("Saved to Google Sheet!");
     } else {
-      alert("Error saving: " + response.message);
-      startScanner();
+      showMessage("Error saving: " + response.message, true);
     }
   })
   .catch(err => {
     console.error(err);
-    alert("Failed to save to Google Sheet.");
-    startScanner();
+    showMessage("Failed to save to Google Sheet.", true);
   });
 });
 </script>
