@@ -4,12 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Баркод скенер за попис на ОС</title>
+
+<!-- Prevent zoom on mobile inputs -->
 <style>
   body { font-family: Arial, sans-serif; margin: 20px; }
   #scanner { width: 100%; max-width: 400px; margin-bottom: 20px; border: 2px solid #ccc; }
   #scanner.success { border-color: green; }
   #message { font-weight: bold; margin-bottom: 10px; }
-  input, select, textarea, button { display: block; margin: 10px 0; width: 100%; padding: 8px; }
+  input, select, textarea, button {
+    display: block;
+    margin: 10px 0;
+    width: 100%;
+    padding: 8px;
+    font-size: 16px; /* prevents mobile zoom */
+  }
   table { width: 100%; border-collapse: collapse; margin-top: 20px; }
   th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
 </style>
