@@ -163,14 +163,14 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
       document.getElementById("inventoryForm").reset();
       barcodeInput.value = "";
       lastScanned = null; // allow next scan
-      showMessage("Saved to Google Sheet!");
+      showMessage("Зачувано во Google Sheet!");
     } else {
       showMessage("Error saving: " + response.message, true);
     }
   })
   .catch(err => {
     console.error(err);
-    showMessage("Failed to save to Google Sheet.", true);
+    showMessage("Грешка во зачувување во Google Sheet.", true);
   });
 });
 </script>
