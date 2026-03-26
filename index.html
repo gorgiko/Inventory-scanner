@@ -34,14 +34,14 @@
   <button type="submit">Зачувај</button>
 </form>
 
-<h3>Saved Entries</h3>
+<h3>Зачувани податоци</h3>
 <table id="inventoryTable">
   <thead>
     <tr>
-      <th>Barcode</th>
-      <th>Location</th>
-      <th>Condition</th>
-      <th>Description</th>
+      <th>Инв.број</th>
+      <th>Локација</th>
+      <th>Состојба</th>
+      <th>Опис</th>
     </tr>
   </thead>
   <tbody></tbody>
@@ -144,7 +144,7 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
     description: document.getElementById("description").value
   };
 
-  if (!entry.barcode) { showMessage("Scan a barcode first!", true); return; }
+  if (!entry.barcode) { showMessage("Скенирај го баркодот!", true); return; }
 
   const webAppUrl = "https://script.google.com/macros/s/AKfycby3XP0od_6LvoPUl70gBsUIbNTS2NDCrwcKmHGR7mfOJLXP2G9MHBmdyMdgaijyIZ-ung/exec"; // Replace with your deployed Apps Script URL
 
