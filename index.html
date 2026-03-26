@@ -60,7 +60,7 @@ document.body.addEventListener("click", () => {
   }
 }, { once: true });
 
-// Inventory data (UI table only, optional local storage)
+// Inventory data (UI table only)
 let inventory = [];
 const tableBody = document.querySelector("#inventoryTable tbody");
 
@@ -90,16 +90,39 @@ const config = {
   ],
   experimentalFeatures: { useBarCodeDetectorIfSupported: true }
 };
-function onScanSuccess(decodedText) {
-  barcodeInput.value = decodedText;
-  scannerDiv.classList.add("success");
-  setTimeout(() => scannerDiv.classList.remove("success"), 200);
-  if (audioUnlocked) { beep.currentTime = 0; beep.play().catch(()=>{}); }
-}
-html5QrCode.start({ facingMode: { exact: "environment" } }, config, onScanSuccess)
-.catch(err => html5QrCode.start({ facingMode: "user" }, config, onScanSuccess).catch(()=>{}));
 
-// Form submission: send to Google Sheets
+// Stop-and-restart scanner workflow
+function onScanSuccess(decodedText) {
+  // Stop scanner immediately to prevent freezing
+  html5QrCode.stop().then(() => {
+    console.log("Scanner stopped after scan");
+
+    barcodeInput.value = decodedText;
+    scannerDiv.classList.add("success");
+    setTimeout(() => scannerDiv.classList.remove("success"), 200);
+
+    if (audioUnlocked) {
+      beep.currentTime = 0;
+      beep.play().catch(() => {});
+    }
+
+  }).catch(err => console.error("Failed to stop scanner:", err));
+}
+
+// Start camera
+function startScanner() {
+  html5QrCode.start(
+    { facingMode: { exact: "environment" } },
+    config,
+    onScanSuccess
+  ).catch(err => {
+    console.warn("Rear camera failed, fallback to user camera", err);
+    html5QrCode.start({ facingMode: "user" }, config, onScanSuccess).catch(err2 => console.error(err2));
+  });
+}
+startScanner();
+
+// Form submission to Google Sheets
 document.getElementById("inventoryForm").addEventListener("submit", e => {
   e.preventDefault();
   
@@ -112,21 +135,27 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   
   if (!entry.barcode) { alert("Scan a barcode first!"); return; }
 
-  // Replace with your Google Apps Script Web App URL
-  const webAppUrl = "https://script.google.com/macros/s/AKfycbyyvxIV7wXHtZ4OAlRlwnU5Pc5QhvCYgv9G60KcFi5kSUPmyna2MGSagL3-jSekKOerzQ/exec";
+  const webAppUrl = "YOUR_WEB_APP_URL_HERE"; // <-- Replace with your Apps Script Web App URL
   
   fetch(webAppUrl, {
     method: "POST",
     body: JSON.stringify(entry)
   })
-  .then(res => res.json())
-  .then(response => {
+  .then(res => res.text())
+  .then(text => {
+    let response = {};
+    try { response = JSON.parse(text); } catch(e) { response = { status: "error", message: text }; }
+
     if (response.status === "success") {
       inventory.push(entry);
       renderTable();
       e.target.reset();
       barcodeInput.value = "";
       alert("Saved to Google Sheet!");
+
+      // Restart scanner for next item
+      startScanner();
+
     } else {
       alert("Error saving: " + response.message);
     }
