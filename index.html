@@ -54,24 +54,17 @@ const barcodeInput = document.getElementById("barcode");
 const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 beep.preload = "auto";
 let audioUnlocked = false;
-
-// Unlock audio on first user tap
 document.body.addEventListener("click", () => {
   if (!audioUnlocked) {
-    beep.play().then(() => {
-      beep.pause();
-      beep.currentTime = 0;
-      audioUnlocked = true;
-      console.log("Audio unlocked");
-    }).catch(err => console.log("Audio unlock failed:", err));
+    beep.play().then(() => { beep.pause(); beep.currentTime = 0; audioUnlocked = true; }).catch(()=>{});
   }
 }, { once: true });
 
-// Inventory data
-let inventory = JSON.parse(localStorage.getItem("inventoryData") || "[]");
+// Inventory data (UI table only, optional local storage)
+let inventory = [];
 const tableBody = document.querySelector("#inventoryTable tbody");
 
-// Render inventory table
+// Render table
 function renderTable() {
   tableBody.innerHTML = "";
   inventory.forEach(entry => {
@@ -83,9 +76,8 @@ function renderTable() {
     tableBody.appendChild(tr);
   });
 }
-renderTable();
 
-// Start QR & barcode scanner
+// QR & barcode scanner
 const html5QrCode = new Html5Qrcode("scanner");
 const config = { 
   fps: 10, 
@@ -98,44 +90,51 @@ const config = {
   ],
   experimentalFeatures: { useBarCodeDetectorIfSupported: true }
 };
-
-// Scanner callback
 function onScanSuccess(decodedText) {
   barcodeInput.value = decodedText;
   scannerDiv.classList.add("success");
   setTimeout(() => scannerDiv.classList.remove("success"), 200);
-  if (audioUnlocked) {
-    beep.currentTime = 0;
-    beep.play().catch(() => {});
-  }
+  if (audioUnlocked) { beep.currentTime = 0; beep.play().catch(()=>{}); }
 }
+html5QrCode.start({ facingMode: { exact: "environment" } }, config, onScanSuccess)
+.catch(err => html5QrCode.start({ facingMode: "user" }, config, onScanSuccess).catch(()=>{}));
 
-// Start camera (rear first, fallback to front)
-html5QrCode.start(
-  { facingMode: { exact: "environment" } },
-  config,
-  onScanSuccess
-).catch(err => {
-  console.warn("Rear camera failed, fallback to default camera", err);
-  html5QrCode.start({ facingMode: "user" }, config, onScanSuccess)
-    .catch(err2 => console.error("Fallback camera failed:", err2));
-});
-
-// Handle form submission
+// Form submission: send to Google Sheets
 document.getElementById("inventoryForm").addEventListener("submit", e => {
   e.preventDefault();
+  
   const entry = {
     barcode: barcodeInput.value,
     location: document.getElementById("location").value,
     condition: document.getElementById("condition").value,
     description: document.getElementById("description").value
   };
+  
   if (!entry.barcode) { alert("Scan a barcode first!"); return; }
-  inventory.push(entry);
-  localStorage.setItem("inventoryData", JSON.stringify(inventory));
-  renderTable();
-  e.target.reset();
-  barcodeInput.value = "";
+
+  // Replace with your Google Apps Script Web App URL
+  const webAppUrl = "https://script.google.com/macros/s/AKfycbw1LpBhim0xevL8TFdvx6UnJC8Xj2N6EM4fsAuf0r5GHu-zItVi6GdRrp-AgZq9md1R3g/exec";
+  
+  fetch(webAppUrl, {
+    method: "POST",
+    body: JSON.stringify(entry)
+  })
+  .then(res => res.json())
+  .then(response => {
+    if (response.status === "success") {
+      inventory.push(entry);
+      renderTable();
+      e.target.reset();
+      barcodeInput.value = "";
+      alert("Saved to Google Sheet!");
+    } else {
+      alert("Error saving: " + response.message);
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Failed to save to Google Sheet.");
+  });
 });
 </script>
 </body>
