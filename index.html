@@ -99,6 +99,7 @@ function onScanSuccess(decodedText) {
 html5QrCode.start({ facingMode: { exact: "environment" } }, config, onScanSuccess)
 .catch(err => html5QrCode.start({ facingMode: "user" }, config, onScanSuccess).catch(()=>{}));
 
+// Form submission: send to Google Sheets
 document.getElementById("inventoryForm").addEventListener("submit", e => {
   e.preventDefault();
   
@@ -112,7 +113,7 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   if (!entry.barcode) { alert("Scan a barcode first!"); return; }
 
   // Replace with your Google Apps Script Web App URL
-  const webAppUrl = "https://script.google.com/macros/s/AKfycbzD9aWR5g6DJZJMefdk0N69ufa81EB3nnPdbk3Oquv1ISwUKqCPQz9DyqgvvW7GqcFWGQ/exec";
+  const webAppUrl = "YOUR_WEB_APP_URL_HERE";
   
   fetch(webAppUrl, {
     method: "POST",
@@ -135,3 +136,6 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
     alert("Failed to save to Google Sheet.");
   });
 });
+</script>
+</body>
+</html>
