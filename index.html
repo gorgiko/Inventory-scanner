@@ -56,25 +56,33 @@ const messageDiv = document.getElementById("message");
 
 let inventory = [];
 let lastScanned = null;
-let audioUnlocked = false;
 
-// Audio setup
+// Audio setup with instant beep
 const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 beep.preload = "auto";
+let audioUnlocked = false;
 document.body.addEventListener("click", () => {
   if (!audioUnlocked) {
     beep.play().then(() => { beep.pause(); beep.currentTime = 0; audioUnlocked = true; }).catch(()=>{});
   }
 }, { once: true });
 
-// Show non-blocking messages
+// Play beep instantly using cloneNode
+function playBeep() {
+  if (!audioUnlocked) return;
+  const sound = beep.cloneNode();
+  sound.currentTime = 0;
+  sound.play().catch(()=>{});
+}
+
+// Non-blocking messages
 function showMessage(msg, isError=false) {
   messageDiv.style.color = isError ? "red" : "green";
   messageDiv.textContent = msg;
   setTimeout(() => { messageDiv.textContent = ""; }, 2000);
 }
 
-// Render inventory table
+// Render table
 function renderTable() {
   tableBody.innerHTML = "";
   inventory.forEach(entry => {
@@ -87,7 +95,7 @@ function renderTable() {
   });
 }
 
-// QR & barcode scanner setup
+// Scanner setup
 const html5QrCode = new Html5Qrcode("scanner");
 const config = { 
   fps: 10, 
@@ -101,16 +109,14 @@ const config = {
   experimentalFeatures: { useBarCodeDetectorIfSupported: true }
 };
 
-// Scanner callback
+// Handle scans
 function onScanSuccess(decodedText) {
   if (decodedText !== lastScanned) {
     barcodeInput.value = decodedText;
     scannerDiv.classList.add("success");
     setTimeout(() => scannerDiv.classList.remove("success"), 200);
-
-    if (audioUnlocked) { beep.currentTime = 0; beep.play().catch(()=>{}); }
-
-    lastScanned = decodedText; // Prevent duplicate scan until saved
+    playBeep();
+    lastScanned = decodedText; // block duplicates until saved
   }
 }
 
@@ -140,7 +146,7 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
 
   if (!entry.barcode) { showMessage("Scan a barcode first!", true); return; }
 
-  const webAppUrl = "https://script.google.com/macros/s/AKfycby3XP0od_6LvoPUl70gBsUIbNTS2NDCrwcKmHGR7mfOJLXP2G9MHBmdyMdgaijyIZ-ung/exec"; // Replace with your Apps Script Web App URL
+  const webAppUrl = "https://script.google.com/macros/s/AKfycby3XP0od_6LvoPUl70gBsUIbNTS2NDCrwcKmHGR7mfOJLXP2G9MHBmdyMdgaijyIZ-ung/exec"; // Replace with your deployed Apps Script URL
 
   fetch(webAppUrl, {
     method: "POST",
@@ -149,14 +155,14 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   .then(res => res.text())
   .then(text => {
     let response = {};
-    try { response = JSON.parse(text); } catch(e) { response = { status: "error", message: text }; }
+    try { response = JSON.parse(text); } catch(e) { response = { status:"error", message:text }; }
 
     if (response.status === "success") {
       inventory.push(entry);
       renderTable();
       document.getElementById("inventoryForm").reset();
       barcodeInput.value = "";
-      lastScanned = null; // allow scanning next item
+      lastScanned = null; // allow next scan
       showMessage("Saved to Google Sheet!");
     } else {
       showMessage("Error saving: " + response.message, true);
