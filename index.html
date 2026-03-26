@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventory Scanner 2D Fixed</title>
+<title>Inventory Scanner 2D Mobile Friendly</title>
 <style>
   body { font-family: Arial, sans-serif; margin: 20px; }
   #scanner { width: 100%; max-width: 400px; margin-bottom: 20px; border: 2px solid #ccc; }
@@ -15,7 +15,7 @@
 </head>
 <body>
 
-<h2>Inventory Scanner 2D Fixed</h2>
+<h2>Inventory Scanner 2D Mobile Friendly</h2>
 
 <div id="scanner"></div>
 
@@ -50,11 +50,31 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
 const scannerDiv = document.getElementById("scanner");
+const barcodeInput = document.getElementById("barcode");
 
-// Inventory table
+// Audio setup
+const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+beep.preload = "auto";
+let audioUnlocked = false;
+
+// Unlock audio on first tap
+document.body.addEventListener("click", () => {
+  if (!audioUnlocked) {
+    beep.play().then(() => {
+      beep.pause();
+      beep.currentTime = 0;
+      audioUnlocked = true;
+      console.log("Audio unlocked");
+    }).catch(err => console.log("Audio unlock failed:", err));
+  }
+}, { once: true });
+
+// Inventory data
 let inventory = JSON.parse(localStorage.getItem("inventoryData") || "[]");
 const tableBody = document.querySelector("#inventoryTable tbody");
-const renderTable = () => {
+
+// Render inventory table
+function renderTable() {
   tableBody.innerHTML = "";
   inventory.forEach(entry => {
     const tr = document.createElement("tr");
@@ -64,12 +84,11 @@ const renderTable = () => {
                     <td>${entry.description}</td>`;
     tableBody.appendChild(tr);
   });
-};
+}
 renderTable();
 
-// Start scanner with facingMode "environment" (rear camera)
+// Start QR & barcode scanner
 const html5QrCode = new Html5Qrcode("scanner");
-
 const config = { 
   fps: 10, 
   qrbox: 250,
@@ -82,57 +101,48 @@ const config = {
   experimentalFeatures: { useBarCodeDetectorIfSupported: true }
 };
 
-// Use facingMode for reliable camera selection
-html5QrCode.start(
-  { facingMode: { exact: "environment" } }, 
-  config,
-  decodedText => {
-    document.getElementById("barcode").value = decodedText;
-    scannerDiv.classList.add("success");
-    setTimeout(() => scannerDiv.classList.remove("success"), 200);
-    const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-    beep.play();
-  },
-  errorMessage => {
-    // optional
+// Scanner callback
+function onScanSuccess(decodedText) {
+  barcodeInput.value = decodedText;
+  scannerDiv.classList.add("success");
+  setTimeout(() => scannerDiv.classList.remove("success"), 200);
+  if (audioUnlocked) {
+    beep.currentTime = 0;
+    beep.play().catch(() => {});
   }
+}
+
+// Start camera (rear first, fallback to front)
+html5QrCode.start(
+  { facingMode: { exact: "environment" } },
+  config,
+  onScanSuccess
 ).catch(err => {
-  console.error("Camera start failed, trying fallback:", err);
-  // fallback: just default camera (no exact facingMode)
-  html5QrCode.start(
-    { facingMode: "user" }, 
-    config,
-    decodedText => {
-      document.getElementById("barcode").value = decodedText;
-      scannerDiv.classList.add("success");
-      setTimeout(() => scannerDiv.classList.remove("success"), 200);
-      const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-      beep.play();
-    },
-    err2 => console.error("Fallback camera failed:", err2)
-  );
+  console.warn("Rear camera failed, fallback to default camera", err);
+  html5QrCode.start({ facingMode: "user" }, config, onScanSuccess)
+    .catch(err2 => console.error("Fallback camera failed:", err2));
 });
 
-// Form handling
+// Handle form submission
 document.getElementById("inventoryForm").addEventListener("submit", e => {
   e.preventDefault();
   const entry = {
-    barcode: document.getElementById("barcode").value,
+    barcode: barcodeInput.value,
     location: document.getElementById("location").value,
     condition: document.getElementById("condition").value,
     description: document.getElementById("description").value
   };
-  if(!entry.barcode) { alert("Scan a barcode first!"); return; }
+  if (!entry.barcode) { alert("Scan a barcode first!"); return; }
   inventory.push(entry);
   localStorage.setItem("inventoryData", JSON.stringify(inventory));
   renderTable();
   e.target.reset();
-  document.getElementById("barcode").value = "";
+  barcodeInput.value = "";
 });
 
 // Export CSV
 document.getElementById("exportBtn").addEventListener("click", () => {
-  if(inventory.length === 0) { alert("No data to export."); return; }
+  if (inventory.length === 0) { alert("No data to export."); return; }
   let csv = "Barcode,Location,Condition,Description\n";
   inventory.forEach(row => {
     csv += `"${row.barcode}","${row.location}","${row.condition}","${row.description}"\n`;
