@@ -5,19 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Баркод скенер за попис на ОС</title>
 
-<!-- Prevent zoom on mobile inputs -->
 <style>
   body { font-family: Arial, sans-serif; margin: 20px; }
   #scanner { width: 100%; max-width: 400px; margin-bottom: 20px; border: 2px solid #ccc; }
   #scanner.success { border-color: green; }
   #message { font-weight: bold; margin-bottom: 10px; }
+
   input, select, textarea, button {
     display: block;
     margin: 10px 0;
     width: 100%;
     padding: 8px;
-    font-size: 16px; /* prevents mobile zoom */
+    font-size: 16px;
   }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0;
+  }
+
   table { width: 100%; border-collapse: collapse; margin-top: 20px; }
   th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
 </style>
@@ -31,14 +39,24 @@
 
 <form id="inventoryForm">
   <input type="text" id="barcode" placeholder="Инвентарен број" readonly>
+
+  <!-- Podrum checkbox -->
+  <label>
+    <input type="checkbox" id="podrum">
+    Podrum
+  </label>
+
   <input type="text" id="location" placeholder="Број на канцеларија" required>
+
   <select id="condition" required>
     <option value="">Изберете состојба на средството</option>
     <option value="Се користи">Се користи</option>
     <option value="За расход">За расход</option>
     <option value="За донација">За донација</option>
   </select>
+
   <textarea id="description" placeholder="Опис/забелешка"></textarea>
+
   <button type="submit">Зачувај</button>
 </form>
 
@@ -62,35 +80,52 @@ const barcodeInput = document.getElementById("barcode");
 const tableBody = document.querySelector("#inventoryTable tbody");
 const messageDiv = document.getElementById("message");
 
+const locationInput = document.getElementById("location");
+const podrumCheckbox = document.getElementById("podrum");
+
 let inventory = [];
 let lastScanned = null;
 
-// Audio setup with instant beep
+// ✅ Podrum logic
+podrumCheckbox.addEventListener("change", () => {
+  if (podrumCheckbox.checked) {
+    locationInput.value = "Podrum";
+    locationInput.disabled = true;
+    locationInput.removeAttribute("required");
+  } else {
+    locationInput.value = "";
+    locationInput.disabled = false;
+    locationInput.setAttribute("required", true);
+  }
+});
+
+// Audio
 const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 beep.preload = "auto";
 let audioUnlocked = false;
+
 document.body.addEventListener("click", () => {
   if (!audioUnlocked) {
-    beep.play().then(() => { beep.pause(); beep.currentTime = 0; audioUnlocked = true; }).catch(()=>{});
+    beep.play().then(() => {
+      beep.pause();
+      beep.currentTime = 0;
+      audioUnlocked = true;
+    }).catch(()=>{});
   }
 }, { once: true });
 
-// Play beep instantly using cloneNode
 function playBeep() {
   if (!audioUnlocked) return;
   const sound = beep.cloneNode();
-  sound.currentTime = 0;
   sound.play().catch(()=>{});
 }
 
-// Non-blocking messages
 function showMessage(msg, isError=false) {
   messageDiv.style.color = isError ? "red" : "green";
   messageDiv.textContent = msg;
   setTimeout(() => { messageDiv.textContent = ""; }, 2000);
 }
 
-// Render table
 function renderTable() {
   tableBody.innerHTML = "";
   inventory.forEach(entry => {
@@ -103,7 +138,7 @@ function renderTable() {
   });
 }
 
-// Scanner setup
+// Scanner
 const html5QrCode = new Html5Qrcode("scanner");
 const config = { 
   fps: 10, 
@@ -117,44 +152,44 @@ const config = {
   experimentalFeatures: { useBarCodeDetectorIfSupported: true }
 };
 
-// Handle scans
 function onScanSuccess(decodedText) {
   if (decodedText !== lastScanned) {
     barcodeInput.value = decodedText;
     scannerDiv.classList.add("success");
     setTimeout(() => scannerDiv.classList.remove("success"), 200);
     playBeep();
-    lastScanned = decodedText; // block duplicates until saved
+    lastScanned = decodedText;
   }
 }
 
-// Start scanner
 function startScanner() {
   html5QrCode.start(
     { facingMode: { exact: "environment" } },
     config,
     onScanSuccess
-  ).catch(err => {
-    console.warn("Rear camera failed, fallback to user camera", err);
-    html5QrCode.start({ facingMode: "user" }, config, onScanSuccess).catch(err2 => console.error(err2));
+  ).catch(() => {
+    html5QrCode.start({ facingMode: "user" }, config, onScanSuccess);
   });
 }
 startScanner();
 
-// Form submission to Google Sheets
+// Submit
 document.getElementById("inventoryForm").addEventListener("submit", e => {
   e.preventDefault();
 
   const entry = {
     barcode: barcodeInput.value,
-    location: document.getElementById("location").value,
+    location: locationInput.value,
     condition: document.getElementById("condition").value,
     description: document.getElementById("description").value
   };
 
-  if (!entry.barcode) { showMessage("Скенирај го баркодот!", true); return; }
+  if (!entry.barcode) {
+    showMessage("Скенирај го баркодот!", true);
+    return;
+  }
 
-  const webAppUrl = "https://script.google.com/macros/s/AKfycby3XP0od_6LvoPUl70gBsUIbNTS2NDCrwcKmHGR7mfOJLXP2G9MHBmdyMdgaijyIZ-ung/exec"; // Replace with your deployed Apps Script URL
+  const webAppUrl = "https://script.google.com/macros/s/AKfycby3XP0od_6LvoPUl70gBsUIbNTS2NDCrwcKmHGR7mfOJLXP2G9MHBmdyMdgaijyIZ-ung/exec";
 
   fetch(webAppUrl, {
     method: "POST",
@@ -169,15 +204,19 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
       inventory.push(entry);
       renderTable();
       document.getElementById("inventoryForm").reset();
+
+      locationInput.disabled = false;
+      locationInput.setAttribute("required", true);
+
       barcodeInput.value = "";
-      lastScanned = null; // allow next scan
+      lastScanned = null;
+
       showMessage("Зачувано во Google Sheet!");
     } else {
       showMessage("Error saving: " + response.message, true);
     }
   })
-  .catch(err => {
-    console.error(err);
+  .catch(() => {
     showMessage("Грешка во зачувување во Google Sheet.", true);
   });
 });
