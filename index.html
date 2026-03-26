@@ -6,12 +6,29 @@
 <title>Баркод скенер за попис на ОС</title>
 
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; }
-  #scanner { width: 100%; max-width: 400px; margin-bottom: 20px; border: 2px solid #ccc; }
-  #scanner.success { border-color: green; }
-  #message { font-weight: bold; margin-bottom: 10px; }
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+  }
 
-  input, select, textarea, button {
+  #scanner {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 20px;
+    border: 2px solid #ccc;
+  }
+
+  #scanner.success {
+    border-color: green;
+  }
+
+  #message {
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  /* FIX: prevent zoom + exclude checkbox */
+  input:not([type="checkbox"]), select, textarea, button {
     display: block;
     margin: 10px 0;
     width: 100%;
@@ -19,15 +36,31 @@
     font-size: 16px;
   }
 
+  /* checkbox styling */
+  input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    transform: scale(1.2); /* slightly bigger for mobile */
+  }
+
   label {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     margin: 10px 0;
   }
 
-  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-  th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+  }
 </style>
 </head>
 <body>
@@ -86,7 +119,7 @@ const podrumCheckbox = document.getElementById("podrum");
 let inventory = [];
 let lastScanned = null;
 
-// ✅ Podrum logic
+/* Podrum logic */
 podrumCheckbox.addEventListener("change", () => {
   if (podrumCheckbox.checked) {
     locationInput.value = "Podrum";
@@ -99,7 +132,7 @@ podrumCheckbox.addEventListener("change", () => {
   }
 });
 
-// Audio
+/* Audio */
 const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 beep.preload = "auto";
 let audioUnlocked = false;
@@ -120,26 +153,31 @@ function playBeep() {
   sound.play().catch(()=>{});
 }
 
+/* Messages */
 function showMessage(msg, isError=false) {
   messageDiv.style.color = isError ? "red" : "green";
   messageDiv.textContent = msg;
   setTimeout(() => { messageDiv.textContent = ""; }, 2000);
 }
 
+/* Table */
 function renderTable() {
   tableBody.innerHTML = "";
   inventory.forEach(entry => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${entry.barcode}</td>
-                    <td>${entry.location}</td>
-                    <td>${entry.condition}</td>
-                    <td>${entry.description}</td>`;
+    tr.innerHTML = `
+      <td>${entry.barcode}</td>
+      <td>${entry.location}</td>
+      <td>${entry.condition}</td>
+      <td>${entry.description}</td>
+    `;
     tableBody.appendChild(tr);
   });
 }
 
-// Scanner
+/* Scanner */
 const html5QrCode = new Html5Qrcode("scanner");
+
 const config = { 
   fps: 10, 
   qrbox: 250,
@@ -155,8 +193,10 @@ const config = {
 function onScanSuccess(decodedText) {
   if (decodedText !== lastScanned) {
     barcodeInput.value = decodedText;
+
     scannerDiv.classList.add("success");
     setTimeout(() => scannerDiv.classList.remove("success"), 200);
+
     playBeep();
     lastScanned = decodedText;
   }
@@ -171,9 +211,10 @@ function startScanner() {
     html5QrCode.start({ facingMode: "user" }, config, onScanSuccess);
   });
 }
+
 startScanner();
 
-// Submit
+/* Submit */
 document.getElementById("inventoryForm").addEventListener("submit", e => {
   e.preventDefault();
 
@@ -198,11 +239,16 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   .then(res => res.text())
   .then(text => {
     let response = {};
-    try { response = JSON.parse(text); } catch(e) { response = { status:"error", message:text }; }
+    try {
+      response = JSON.parse(text);
+    } catch(e) {
+      response = { status:"error", message:text };
+    }
 
     if (response.status === "success") {
       inventory.push(entry);
       renderTable();
+
       document.getElementById("inventoryForm").reset();
 
       locationInput.disabled = false;
@@ -221,5 +267,6 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   });
 });
 </script>
+
 </body>
 </html>
