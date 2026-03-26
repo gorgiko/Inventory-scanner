@@ -1,128 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Баркод скенер за попис на ОС</title>
-<style>
-  body { font-family: Arial, sans-serif; margin: 20px; }
-  #scanner { width: 100%; max-width: 400px; margin-bottom: 20px; border: 2px solid #ccc; }
-  #scanner.success { border-color: green; }
-  input, select, textarea, button { display: block; margin: 10px 0; width: 100%; padding: 8px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-  th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-</style>
-</head>
-<body>
-
-<h2>Баркод скенер за попис на ОС</h2>
-
-<div id="scanner"></div>
-
-<form id="inventoryForm">
-  <input type="text" id="barcode" placeholder="Инвентарен број" readonly>
-  <input type="text" id="location" placeholder="Број на канцеларија" required>
-  <select id="condition" required>
-    <option value="">Изберете состојба на средството</option>
-    <option value="OK">Се користи</option>
-    <option value="Damaged">За расход</option>
-    <option value="Needs Repair">За донација</option>
-  </select>
-  <textarea id="description" placeholder="Опис/забелешка"></textarea>
-  <button type="submit">Зачувај</button>
-</form>
-
-<h3>Saved Entries</h3>
-<table id="inventoryTable">
-  <thead>
-    <tr>
-      <th>Barcode</th>
-      <th>Location</th>
-      <th>Condition</th>
-      <th>Description</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
-<script src="https://unpkg.com/html5-qrcode"></script>
-<script>
-const scannerDiv = document.getElementById("scanner");
-const barcodeInput = document.getElementById("barcode");
-
-// Audio setup
-const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-beep.preload = "auto";
-let audioUnlocked = false;
-document.body.addEventListener("click", () => {
-  if (!audioUnlocked) {
-    beep.play().then(() => { beep.pause(); beep.currentTime = 0; audioUnlocked = true; }).catch(()=>{});
-  }
-}, { once: true });
-
-// Inventory data (UI table only)
-let inventory = [];
-const tableBody = document.querySelector("#inventoryTable tbody");
-
-// Render table
-function renderTable() {
-  tableBody.innerHTML = "";
-  inventory.forEach(entry => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${entry.barcode}</td>
-                    <td>${entry.location}</td>
-                    <td>${entry.condition}</td>
-                    <td>${entry.description}</td>`;
-    tableBody.appendChild(tr);
-  });
-}
-
-// QR & barcode scanner
-const html5QrCode = new Html5Qrcode("scanner");
-const config = { 
-  fps: 10, 
-  qrbox: 250,
-  formatsToSupport: [
-    Html5QrcodeSupportedFormats.QR_CODE,
-    Html5QrcodeSupportedFormats.DATA_MATRIX,
-    Html5QrcodeSupportedFormats.PDF_417,
-    Html5QrcodeSupportedFormats.AZTEC
-  ],
-  experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-};
-
-// Stop-and-restart scanner workflow
-function onScanSuccess(decodedText) {
-  // Stop scanner immediately to prevent freezing
-  html5QrCode.stop().then(() => {
-    console.log("Scanner stopped after scan");
-
-    barcodeInput.value = decodedText;
-    scannerDiv.classList.add("success");
-    setTimeout(() => scannerDiv.classList.remove("success"), 200);
-
-    if (audioUnlocked) {
-      beep.currentTime = 0;
-      beep.play().catch(() => {});
-    }
-
-  }).catch(err => console.error("Failed to stop scanner:", err));
-}
-
-// Start camera
-function startScanner() {
-  html5QrCode.start(
-    { facingMode: { exact: "environment" } },
-    config,
-    onScanSuccess
-  ).catch(err => {
-    console.warn("Rear camera failed, fallback to user camera", err);
-    html5QrCode.start({ facingMode: "user" }, config, onScanSuccess).catch(err2 => console.error(err2));
-  });
-}
-startScanner();
-
-// Form submission to Google Sheets
 document.getElementById("inventoryForm").addEventListener("submit", e => {
   e.preventDefault();
   
@@ -135,27 +10,21 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   
   if (!entry.barcode) { alert("Scan a barcode first!"); return; }
 
-  const webAppUrl = "https://script.google.com/macros/s/AKfycbxBNbibzHJh-C61P0zxRcCqFS3qHLHqTo-JbM_922vrLxVIctAQ76cI1uaiXNr9d-AHiw/exec; // <-- Replace with your Apps Script Web App URL
+  // Replace with your Google Apps Script Web App URL
+  const webAppUrl = "https://script.google.com/macros/s/AKfycbxBNbibzHJh-C61P0zxRcCqFS3qHLHqTo-JbM_922vrLxVIctAQ76cI1uaiXNr9d-AHiw/exec";
   
   fetch(webAppUrl, {
     method: "POST",
     body: JSON.stringify(entry)
   })
-  .then(res => res.text())
-  .then(text => {
-    let response = {};
-    try { response = JSON.parse(text); } catch(e) { response = { status: "error", message: text }; }
-
+  .then(res => res.json())
+  .then(response => {
     if (response.status === "success") {
       inventory.push(entry);
       renderTable();
       e.target.reset();
       barcodeInput.value = "";
       alert("Saved to Google Sheet!");
-
-      // Restart scanner for next item
-      startScanner();
-
     } else {
       alert("Error saving: " + response.message);
     }
@@ -165,6 +34,3 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
     alert("Failed to save to Google Sheet.");
   });
 });
-</script>
-</body>
-</html>
