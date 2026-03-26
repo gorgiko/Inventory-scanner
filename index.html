@@ -32,8 +32,6 @@
   <button type="submit">Save Entry</button>
 </form>
 
-<button id="exportBtn">Export CSV</button>
-
 <h3>Saved Entries</h3>
 <table id="inventoryTable">
   <thead>
@@ -57,7 +55,7 @@ const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.o
 beep.preload = "auto";
 let audioUnlocked = false;
 
-// Unlock audio on first tap
+// Unlock audio on first user tap
 document.body.addEventListener("click", () => {
   if (!audioUnlocked) {
     beep.play().then(() => {
@@ -138,22 +136,6 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   renderTable();
   e.target.reset();
   barcodeInput.value = "";
-});
-
-// Export CSV
-document.getElementById("exportBtn").addEventListener("click", () => {
-  if (inventory.length === 0) { alert("No data to export."); return; }
-  let csv = "Barcode,Location,Condition,Description\n";
-  inventory.forEach(row => {
-    csv += `"${row.barcode}","${row.location}","${row.condition}","${row.description}"\n`;
-  });
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "inventory.csv";
-  a.click();
-  URL.revokeObjectURL(url);
 });
 </script>
 </body>
