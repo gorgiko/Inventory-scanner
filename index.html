@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="mk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,7 +27,6 @@
     margin-bottom: 10px;
   }
 
-  /* FIX: prevent zoom + exclude checkbox */
   input:not([type="checkbox"]), select, textarea, button {
     display: block;
     margin: 10px 0;
@@ -36,11 +35,9 @@
     font-size: 16px;
   }
 
-  /* checkbox styling */
   input[type="checkbox"] {
     width: auto;
-    margin: 0;
-    transform: scale(1.2); /* slightly bigger for mobile */
+    transform: scale(1.2);
   }
 
   label {
@@ -59,7 +56,6 @@
   th, td {
     border: 1px solid #ccc;
     padding: 8px;
-    text-align: left;
   }
 </style>
 </head>
@@ -73,22 +69,28 @@
 <form id="inventoryForm">
   <input type="text" id="barcode" placeholder="Инвентарен број" readonly>
 
-  <!-- Podrum checkbox -->
+  <!-- Podrum -->
   <label>
     <input type="checkbox" id="podrum">
     Подрум
   </label>
 
+  <!-- Sistem sala -->
+  <label>
+    <input type="checkbox" id="sistemsala">
+    Систем сала
+  </label>
+
   <input type="text" id="location" placeholder="Број на канцеларија" required>
 
   <select id="condition" required>
-    <option value="">Изберете состојба на средството</option>
+    <option value="">Изберете состојба</option>
     <option value="Се користи">Се користи</option>
     <option value="За расход">За расход</option>
     <option value="За донација">За донација</option>
   </select>
 
-  <textarea id="description" placeholder="Опис/забелешка"></textarea>
+  <textarea id="description" placeholder="Опис"></textarea>
 
   <button type="submit">Зачувај</button>
 </form>
@@ -107,6 +109,7 @@
 </table>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
+
 <script>
 const scannerDiv = document.getElementById("scanner");
 const barcodeInput = document.getElementById("barcode");
@@ -115,26 +118,43 @@ const messageDiv = document.getElementById("message");
 
 const locationInput = document.getElementById("location");
 const podrumCheckbox = document.getElementById("podrum");
+const sistemSalaCheckbox = document.getElementById("sistemsala");
 
 let inventory = [];
 let lastScanned = null;
 
-/* Podrum logic */
-podrumCheckbox.addEventListener("change", () => {
+/* =========================
+   CHECKBOX LOGIC
+========================= */
+function updateLocationFromCheckboxes() {
   if (podrumCheckbox.checked) {
     locationInput.value = "Подрум";
     locationInput.disabled = true;
     locationInput.removeAttribute("required");
-  } else {
+    sistemSalaCheckbox.checked = false;
+  } 
+  else if (sistemSalaCheckbox.checked) {
+    locationInput.value = "Систем сала";
+    locationInput.disabled = true;
+    locationInput.removeAttribute("required");
+    podrumCheckbox.checked = false;
+  } 
+  else {
     locationInput.value = "";
     locationInput.disabled = false;
     locationInput.setAttribute("required", true);
   }
-});
+}
 
-/* Audio */
+podrumCheckbox.addEventListener("change", updateLocationFromCheckboxes);
+sistemSalaCheckbox.addEventListener("change", updateLocationFromCheckboxes);
+
+/* =========================
+   AUDIO
+========================= */
 const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 beep.preload = "auto";
+
 let audioUnlocked = false;
 
 document.body.addEventListener("click", () => {
@@ -149,18 +169,21 @@ document.body.addEventListener("click", () => {
 
 function playBeep() {
   if (!audioUnlocked) return;
-  const sound = beep.cloneNode();
-  sound.play().catch(()=>{});
+  beep.cloneNode().play().catch(()=>{});
 }
 
-/* Messages */
+/* =========================
+   MESSAGE
+========================= */
 function showMessage(msg, isError=false) {
   messageDiv.style.color = isError ? "red" : "green";
   messageDiv.textContent = msg;
-  setTimeout(() => { messageDiv.textContent = ""; }, 2000);
+  setTimeout(() => messageDiv.textContent = "", 2000);
 }
 
-/* Table */
+/* =========================
+   TABLE
+========================= */
 function renderTable() {
   tableBody.innerHTML = "";
   inventory.forEach(entry => {
@@ -175,11 +198,13 @@ function renderTable() {
   });
 }
 
-/* Scanner */
+/* =========================
+   SCANNER
+========================= */
 const html5QrCode = new Html5Qrcode("scanner");
 
 const config = { 
-  fps: 10, 
+  fps: 10,
   qrbox: 250,
   formatsToSupport: [
     Html5QrcodeSupportedFormats.QR_CODE,
@@ -214,7 +239,9 @@ function startScanner() {
 
 startScanner();
 
-/* Submit */
+/* =========================
+   SUBMIT
+========================= */
 document.getElementById("inventoryForm").addEventListener("submit", e => {
   e.preventDefault();
 
@@ -226,7 +253,7 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   };
 
   if (!entry.barcode) {
-    showMessage("Скенирај го баркодот!", true);
+    showMessage("Скенирај баркод!", true);
     return;
   }
 
@@ -238,12 +265,9 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   })
   .then(res => res.text())
   .then(text => {
-    let response = {};
-    try {
-      response = JSON.parse(text);
-    } catch(e) {
-      response = { status:"error", message:text };
-    }
+    let response;
+    try { response = JSON.parse(text); }
+    catch { response = { status:"error", message:text }; }
 
     if (response.status === "success") {
       inventory.push(entry);
@@ -257,13 +281,13 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
       barcodeInput.value = "";
       lastScanned = null;
 
-      showMessage("Зачувано во Google Sheet!");
+      showMessage("Зачувано!");
     } else {
-      showMessage("Error saving: " + response.message, true);
+      showMessage("Error: " + response.message, true);
     }
   })
   .catch(() => {
-    showMessage("Грешка во зачувување во Google Sheet.", true);
+    showMessage("Грешка при зачувување!", true);
   });
 });
 </script>
