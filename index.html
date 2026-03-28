@@ -152,41 +152,25 @@ sistemSalaCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 /* =========================
    AUDIO
 ========================= */
-let beep;
-let audioReady = false;
+const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+beep.preload = "auto";
 
-/* Create audio properly */
-function initAudio() {
-  beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-  beep.preload = "auto";
-  beep.volume = 1;
-}
+let audioUnlocked = false;
 
-/* Unlock audio (REQUIRED for mobile) */
-document.addEventListener("click", () => {
-  if (!audioReady) {
-    beep.play()
-      .then(() => {
-        beep.pause();
-        beep.currentTime = 0;
-        audioReady = true;
-      })
-      .catch(() => {});
+document.body.addEventListener("click", () => {
+  if (!audioUnlocked) {
+    beep.play().then(() => {
+      beep.pause();
+      beep.currentTime = 0;
+      audioUnlocked = true;
+    }).catch(()=>{});
   }
 }, { once: true });
 
-initAudio();
-
-/* Play sound (fixed) */
 function playBeep() {
-  if (!audioReady || !beep) return;
-
-  try {
-    beep.currentTime = 0; // rewind instead of clone
-    beep.play().catch(()=>{});
-  } catch (e) {}
+  if (!audioUnlocked) return;
+  beep.cloneNode().play().catch(()=>{});
 }
-
 /* =========================
    MESSAGE
 ========================= */
