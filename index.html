@@ -211,7 +211,7 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
 
   if (!entry.barcode) { showMessage("Скенирај баркод!", true); return; }
 
-  const webAppUrl = "YOUR_GOOGLE_SHEET_WEBAPP_URL"; // replace with your Apps Script URL
+  const webAppUrl = "https://script.google.com/macros/s/AKfycbxb1pxZxUrmITmtLZF6wIaCQaJ9pFYA2AqbP0HMBgAA5zp2RO-fC0Ik0aSk4R_0J7JeMQ/exec"; // replace with your Apps Script URL
 
   fetch(webAppUrl, {
     method: "POST",
