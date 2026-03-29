@@ -241,12 +241,15 @@ const config = {
 
 function onScanSuccess(decodedText) {
   if (decodedText !== lastScanned) {
+
+    initAudio();
+    playBeep(); // 🔊 industrial beep
+
     barcodeInput.value = decodedText;
 
     scannerDiv.classList.add("success");
     setTimeout(() => scannerDiv.classList.remove("success"), 200);
 
-    playBeep();
     lastScanned = decodedText;
   }
 }
