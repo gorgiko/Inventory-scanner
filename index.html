@@ -152,24 +152,33 @@ sistemSalaCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 /* =========================
    AUDIO
 ========================= */
-const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-beep.preload = "auto";
+let audioCtx = null;
 
-let audioUnlocked = false;
-
-document.body.addEventListener("click", () => {
-  if (!audioUnlocked) {
-    beep.play().then(() => {
-      beep.pause();
-      beep.currentTime = 0;
-      audioUnlocked = true;
-    }).catch(()=>{});
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-}, { once: true });
+}
+
+// unlock audio on first user interaction
+document.body.addEventListener("click", initAudio, { once: true });
 
 function playBeep() {
-  if (!audioUnlocked) return;
-  beep.cloneNode().play().catch(()=>{});
+  if (!audioCtx) return;
+
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+
+  oscillator.type = "sine";       // sound type
+  oscillator.frequency.value = 1000; // pitch (Hz)
+
+  gainNode.gain.value = 0.1;      // volume
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+
+  oscillator.start();
+  oscillator.stop(audioCtx.currentTime + 0.05); // VERY short beep
 }
 /* =========================
    MESSAGE
