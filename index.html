@@ -6,57 +6,57 @@
 <title>Баркод скенер за попис на ОС</title>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  margin: 20px;
-}
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+  }
 
-#scanner {
-  width: 100%;
-  max-width: 400px;
-  margin-bottom: 20px;
-  border: 2px solid #ccc;
-}
+  #scanner {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 20px;
+    border: 2px solid #ccc;
+  }
 
-#scanner.success {
-  border-color: green;
-}
+  #scanner.success {
+    border-color: green;
+  }
 
-#message {
-  font-weight: bold;
-  margin-bottom: 10px;
-}
+  #message {
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
 
-input:not([type="checkbox"]), select, textarea, button {
-  display: block;
-  margin: 10px 0;
-  width: 100%;
-  padding: 8px;
-  font-size: 16px;
-}
+  input:not([type="checkbox"]), select, textarea, button {
+    display: block;
+    margin: 10px 0;
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+  }
 
-input[type="checkbox"] {
-  width: auto;
-  transform: scale(1.2);
-}
+  input[type="checkbox"] {
+    width: auto;
+    transform: scale(1.2);
+  }
 
-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 10px 0;
-}
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+  }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
 
-th, td {
-  border: 1px solid #ccc;
-  padding: 8px;
-}
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+  }
 </style>
 </head>
 <body>
@@ -69,11 +69,13 @@ th, td {
 <form id="inventoryForm">
   <input type="text" id="barcode" placeholder="Инвентарен број" readonly>
 
+  <!-- Podrum -->
   <label>
     <input type="checkbox" id="podrum">
     Подрум
   </label>
 
+  <!-- Sistem sala -->
   <label>
     <input type="checkbox" id="sistemsala">
     Систем сала
@@ -148,26 +150,27 @@ podrumCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 sistemSalaCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 
 /* =========================
-   INSTANT BEEP + VIBRATION
+   AUDIO
 ========================= */
-function playBeep() {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioContext();
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-    oscillator.type = "square";
-    oscillator.frequency.value = 1000; // Hz
-    gain.gain.value = 0.1; // volume
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + 0.1); // duration 0.1s
-  } catch(e) {
-    console.warn("Beep failed:", e);
-  }
-}
+const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+beep.preload = "auto";
 
+let audioUnlocked = false;
+
+document.body.addEventListener("click", () => {
+  if (!audioUnlocked) {
+    beep.play().then(() => {
+      beep.pause();
+      beep.currentTime = 0;
+      audioUnlocked = true;
+    }).catch(()=>{});
+  }
+}, { once: true });
+
+function playBeep() {
+  if (!audioUnlocked) return;
+  beep.cloneNode().play().catch(()=>{});
+}
 /* =========================
    MESSAGE
 ========================= */
@@ -214,12 +217,11 @@ const config = {
 function onScanSuccess(decodedText) {
   if (decodedText !== lastScanned) {
     barcodeInput.value = decodedText;
+
     scannerDiv.classList.add("success");
     setTimeout(() => scannerDiv.classList.remove("success"), 200);
 
     playBeep();
-    navigator.vibrate?.(120); // mobile vibration
-
     lastScanned = decodedText;
   }
 }
@@ -254,11 +256,10 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
     return;
   }
 
-  const webAppUrl = "https://script.google.com/macros/s/AKfycbwNO3rEVuBVLkrNsKpPqffnUKD4QE6mHKl0rr9StayedmTuX8qIHZVZevES4DzDeNV2MA/exec"; // <-- replace with your Google Apps Script URL
+  const webAppUrl = "https://script.google.com/macros/s/AKfycbxb1pxZxUrmITmtLZF6wIaCQaJ9pFYA2AqbP0HMBgAA5zp2RO-fC0Ik0aSk4R_0J7JeMQ/exec";
 
   fetch(webAppUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(entry)
   })
   .then(res => res.text())
@@ -284,16 +285,13 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
       showMessage("Error: " + response.message, true);
     }
   })
-  .catch(err => {
-    console.error("Fetch error:", err);
+  .catch(() => {
     showMessage("Грешка при зачувување!", true);
   });
 });
 </script>
-
-<footer style="margin-top:40px; text-align:center; font-size:14px; color:#666;">
+ <footer style="margin-top:40px; text-align:center; font-size:14px; color:#666;">
   © 2026 GorgiKo. Сите права задржани.
 </footer>
-
 </body>
 </html>
