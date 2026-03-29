@@ -150,34 +150,27 @@ podrumCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 sistemSalaCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 
 /* =========================
-   INSTANT BEEP USING WEB AUDIO
+   AUDIO
 ========================= */
-let audioCtx;
+const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+beep.preload = "auto";
+
+let audioUnlocked = false;
 
 document.body.addEventListener("click", () => {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    audioCtx.resume();
+  if (!audioUnlocked) {
+    beep.play().then(() => {
+      beep.pause();
+      beep.currentTime = 0;
+      audioUnlocked = true;
+    }).catch(()=>{});
   }
 }, { once: true });
 
 function playBeep() {
-  if (!audioCtx) return;
-
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-
-  oscillator.type = "square";
-  oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); // 1kHz beep
-  gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime); // volume
-
-  oscillator.start();
-  oscillator.stop(audioCtx.currentTime + 0.1); // 100ms beep
+  if (!audioUnlocked) return;
+  beep.cloneNode().play().catch(()=>{});
 }
-
 /* =========================
    MESSAGE
 ========================= */
@@ -211,7 +204,7 @@ const html5QrCode = new Html5Qrcode("scanner");
 
 const config = { 
   fps: 10,
-  qrbox: Math.min(window.innerWidth, 400),
+  qrbox: 250,
   formatsToSupport: [
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.DATA_MATRIX,
@@ -228,18 +221,17 @@ function onScanSuccess(decodedText) {
     scannerDiv.classList.add("success");
     setTimeout(() => scannerDiv.classList.remove("success"), 200);
 
-    playBeep(); // instant beep
+    playBeep();
     lastScanned = decodedText;
   }
 }
 
 function startScanner() {
   html5QrCode.start(
-    { facingMode: "environment" },
+    { facingMode: { exact: "environment" } },
     config,
     onScanSuccess
-  ).catch(err => {
-    console.warn("Rear camera failed, trying front camera", err);
+  ).catch(() => {
     html5QrCode.start({ facingMode: "user" }, config, onScanSuccess);
   });
 }
@@ -281,6 +273,7 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
       renderTable();
 
       document.getElementById("inventoryForm").reset();
+
       locationInput.disabled = false;
       locationInput.setAttribute("required", true);
 
@@ -297,10 +290,8 @@ document.getElementById("inventoryForm").addEventListener("submit", e => {
   });
 });
 </script>
-
-<footer style="margin-top:40px; text-align:center; font-size:14px; color:#666;">
+ <footer style="margin-top:40px; text-align:center; font-size:14px; color:#666;">
   © 2026 GorgiKo. Сите права задржани.
 </footer>
-
 </body>
 </html>
