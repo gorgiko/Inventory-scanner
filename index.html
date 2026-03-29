@@ -150,7 +150,7 @@ podrumCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 sistemSalaCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 
 /* =========================
-   AUDIO
+   AUDIO (INDUSTRIAL BEEP)
 ========================= */
 let audioCtx = null;
 
@@ -158,27 +158,43 @@ function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
+
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
 }
 
-// unlock audio on first user interaction
-document.body.addEventListener("click", initAudio, { once: true });
+["click", "touchstart", "keydown"].forEach(event => {
+  document.addEventListener(event, initAudio, { once: true });
+});
 
 function playBeep() {
   if (!audioCtx) return;
 
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
+  const now = audioCtx.currentTime;
 
-  oscillator.type = "sine";       // sound type
-  oscillator.frequency.value = 1000; // pitch (Hz)
+  function beep(startTime) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
-  gainNode.gain.value = 0.1;      // volume
+    osc.type = "square"; // aggressive scanner sound
+    osc.frequency.setValueAtTime(1800, startTime); // high pitch
 
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
+    // envelope (attack + decay)
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.6, startTime + 0.005); // loud
+    gain.gain.linearRampToValueAtTime(0, startTime + 0.08);
 
-  oscillator.start();
-  oscillator.stop(audioCtx.currentTime + 0.05); // VERY short beep
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(startTime);
+    osc.stop(startTime + 0.08);
+  }
+
+  // 🔥 DOUBLE BEEP (industrial style)
+  beep(now);
+  beep(now + 0.12);
 }
 /* =========================
    MESSAGE
