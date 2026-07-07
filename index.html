@@ -30,14 +30,16 @@ body {
     position:relative;
 
     width:100%;
-    height:100vh;
+
+    height:70vh;
+
+    min-height:400px;
 
     background:black;
 
     overflow:hidden;
 
 }
-
 
 #scanner {
 
@@ -652,28 +654,22 @@ await Html5Qrcode.getCameras();
 
 
 
-if(cameras.length===0){
+if(!cameras.length){
 
-throw "No camera";
+throw "No cameras detected";
 
 }
 
 
 
-let backCamera =
-cameras.find(
-c =>
-c.label
-.toLowerCase()
-.includes("back")
-);
+console.log(cameras);
 
 
 
 cameraId =
-backCamera ?
-backCamera.id :
-cameras[cameras.length-1].id;
+cameras[
+cameras.length-1
+].id;
 
 
 
@@ -794,48 +790,75 @@ showMessage(
 async function startScanner(){
 
 
-
 if(scannerRunning)
 return;
 
+
+try{
 
 
 await getCamera();
 
 
 
-if(!cameraId)
+if(!cameraId){
+
+showMessage(
+"No camera found",
+true
+);
+
 return;
 
+}
 
 
-html5QrCode.start(
 
-cameraId,
+html5QrCode =
+new Html5Qrcode(
+"scanner",
+{
+verbose:false
+}
+);
+
+
+
+await html5QrCode.start(
+
+
+{
+deviceId:{
+exact:cameraId
+}
+},
 
 
 {
 
-...scannerConfig,
+
+fps:10,
 
 
-videoConstraints:{
-
-
-width:{
-ideal:1920
+qrbox:{
+width:300,
+height:300
 },
 
 
-height:{
-ideal:1080
-},
+aspectRatio:1.0,
 
 
-focusMode:"continuous"
+formatsToSupport:[
 
 
-}
+Html5QrcodeSupportedFormats.DATA_MATRIX,
+
+
+Html5QrcodeSupportedFormats.CODE_128
+
+
+]
 
 
 },
@@ -844,37 +867,40 @@ focusMode:"continuous"
 onScanSuccess
 
 
-)
+);
 
-.then(()=>{
 
 
 scannerRunning=true;
 
 
 showMessage(
-"Камера активна"
+"Camera started"
 );
-
-
-
-})
-
-.catch(err=>{
-
-
-showMessage(
-"Грешка камера: "+err,
-true
-);
-
-
-});
 
 
 
 }
 
+
+
+catch(error){
+
+
+console.error(error);
+
+
+showMessage(
+"Camera error: "+error,
+true
+);
+
+
+}
+
+
+
+}
 
 
 
