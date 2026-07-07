@@ -228,13 +228,15 @@ function renderTable() {
 const html5QrCode = new Html5Qrcode("scanner");
 
 const config = { 
-  fps: 10,
+  fps: 20,
   qrbox: 250,
   formatsToSupport: [
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.DATA_MATRIX,
     Html5QrcodeSupportedFormats.PDF_417,
-    Html5QrcodeSupportedFormats.AZTEC
+    Html5QrcodeSupportedFormats.CODE_128,
+    Html5QrcodeSupportedFormats.AZTEC,
+    Html5QrcodeSupportedFormats.CODE_39,
   ],
   experimentalFeatures: { useBarCodeDetectorIfSupported: true }
 };
