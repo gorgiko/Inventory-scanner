@@ -11,12 +11,21 @@
     margin: 20px;
   }
 
-  #scanner {
+ #scanner {
+    position: relative;
     width: 100%;
-    max-width: 400px;
-    margin-bottom: 20px;
-    border: 2px solid #ccc;
-  }
+    height: 80vh;
+    border: 3px solid #ccc;
+    overflow: hidden;
+    background: black;
+    border-radius: 12px;
+}
+
+#scanner video{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover;
+}
 
   #scanner.success {
     border-color: green;
@@ -227,18 +236,49 @@ function renderTable() {
 ========================= */
 const html5QrCode = new Html5Qrcode("scanner");
 
-const config = { 
-  fps: 10,
-  qrbox: 250,
-  formatsToSupport: [
-    Html5QrcodeSupportedFormats.QR_CODE,
-    Html5QrcodeSupportedFormats.DATA_MATRIX,
-    Html5QrcodeSupportedFormats.PDF_417,
-    Html5QrcodeSupportedFormats.AZTEC
-  ],
-  experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-};
+const config = {
 
+    fps:20,
+
+    qrbox:function(viewfinderWidth, viewfinderHeight){
+
+        const minEdge=Math.min(viewfinderWidth,viewfinderHeight);
+
+        return{
+            width:minEdge,
+            height:minEdge
+        };
+    },
+
+    aspectRatio:1.777,
+
+    disableFlip:false,
+
+    rememberLastUsedCamera:true,
+
+    formatsToSupport:[
+
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.DATA_MATRIX,
+        Html5QrcodeSupportedFormats.AZTEC,
+        Html5QrcodeSupportedFormats.PDF_417,
+
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.CODE_93,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E
+
+    ],
+
+    experimentalFeatures:{
+        useBarCodeDetectorIfSupported:true
+    }
+
+};
 function onScanSuccess(decodedText) {
   if (decodedText !== lastScanned) {
 
@@ -254,17 +294,87 @@ function onScanSuccess(decodedText) {
   }
 }
 
-function startScanner() {
-  html5QrCode.start(
-    { facingMode: { exact: "environment" } },
-    config,
-    onScanSuccess
-  ).catch(() => {
-    html5QrCode.start({ facingMode: "user" }, config, onScanSuccess);
-  });
+async function startScanner(){
+
+    const cameraConfig={
+
+    facingMode:{
+        ideal:"environment"
+    },
+
+    width:{
+        ideal:1920
+    },
+
+    height:{
+        ideal:1080
+    }
+
+};
+
+    try{
+
+        await html5QrCode.start(
+
+            cameraConfig,
+
+            config,
+
+            onScanSuccess
+
+        );
+       const track=html5QrCode.getRunningTrack();
+
+const capabilities=track.getCapabilities();
+
+const constraints={};
+
+if(capabilities.focusMode){
+
+    constraints.advanced=[
+        {
+            focusMode:"continuous"
+        }
+    ];
+
 }
 
-startScanner();
+if(capabilities.zoom){
+
+    constraints.advanced=[
+        ...(constraints.advanced||[]),
+        {
+            zoom:Math.min(2,capabilities.zoom.max)
+        }
+    ];
+
+}
+
+track.applyConstraints(constraints).catch(()=>{});
+    }
+    catch(e){
+
+        console.log(e);
+
+        const cameras=await Html5Qrcode.getCameras();
+
+        if(cameras.length){
+
+            await html5QrCode.start(
+
+                cameras[cameras.length-1].id,
+
+                config,
+
+                onScanSuccess
+
+            );
+
+        }
+
+    }
+
+}
 
 /* =========================
    SUBMIT
