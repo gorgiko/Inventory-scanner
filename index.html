@@ -871,7 +871,49 @@ onScanSuccess
 
 
 scannerRunning=true;
+setTimeout(()=>{
 
+
+try{
+
+
+const video =
+document.querySelector(
+"#scanner video"
+);
+
+
+const track =
+video.srcObject
+.getVideoTracks()[0];
+
+
+
+track.applyConstraints({
+
+advanced:[
+
+{
+
+focusMode:"continuous"
+
+}
+
+]
+
+});
+
+
+}
+
+catch(e){
+
+console.log(e);
+
+}
+
+
+},2000);
 
 showMessage(
 "Camera started"
