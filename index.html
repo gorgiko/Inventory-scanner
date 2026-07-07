@@ -647,9 +647,6 @@ messageDiv.innerHTML="";
 async function getCamera(){
 
 
-try{
-
-
 const cameras =
 await Html5Qrcode.getCameras();
 
@@ -663,40 +660,24 @@ throw "No camera";
 
 
 
-/*
-Prefer rear camera
-*/
-
-
-cameraId =
+let backCamera =
 cameras.find(
 c =>
 c.label
 .toLowerCase()
 .includes("back")
-)
-?.id
-||
-cameras[0].id;
-
-
-
-}
-catch(e){
-
-
-showMessage(
-"Камера не е достапна",
-true
 );
 
 
-}
+
+cameraId =
+backCamera ?
+backCamera.id :
+cameras[cameras.length-1].id;
 
 
 
 }
-
 
 
 
