@@ -228,21 +228,19 @@ function renderTable() {
 const html5QrCode = new Html5Qrcode("scanner");
 
 const config = { 
-  fps: 20,
+  fps: 10,
   qrbox: 250,
   formatsToSupport: [
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.DATA_MATRIX,
     Html5QrcodeSupportedFormats.PDF_417,
-    Html5QrcodeSupportedFormats.CODE_128,
-    Html5QrcodeSupportedFormats.AZTEC,
-    Html5QrcodeSupportedFormats.CODE_39,
+    Html5QrcodeSupportedFormats.AZTEC
   ],
   experimentalFeatures: { useBarCodeDetectorIfSupported: true }
 };
 
 function onScanSuccess(decodedText) {
-
+  if (decodedText !== lastScanned) {
 
     initAudio();
     playBeep(); // 🔊 industrial beep
@@ -252,6 +250,7 @@ function onScanSuccess(decodedText) {
     scannerDiv.classList.add("success");
     setTimeout(() => scannerDiv.classList.remove("success"), 200);
 
+    lastScanned = decodedText;
   }
 }
 
