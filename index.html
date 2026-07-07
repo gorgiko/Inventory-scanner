@@ -1,425 +1,1131 @@
 <!DOCTYPE html>
 <html lang="mk">
+
 <head>
+
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Баркод скенер за попис на ОС</title>
 
+
 <style>
-  body {
+
+body {
+
     font-family: Arial, sans-serif;
-    margin: 20px;
-  }
+    margin:20px;
+    background:#fff;
 
- #scanner {
-    position: relative;
-    width: 100%;
-    height: 80vh;
-    border: 3px solid #ccc;
-    overflow: hidden;
-    background: black;
-    border-radius: 12px;
 }
 
-#scanner video{
+
+h2 {
+
+    text-align:center;
+
+}
+
+
+/* =========================
+   CAMERA
+========================= */
+
+#scanner {
+
+    width:100%;
+    height:70vh;
+
+    background:black;
+
+    border:3px solid #ccc;
+
+    border-radius:12px;
+
+    overflow:hidden;
+
+    position:relative;
+
+}
+
+
+#scanner video {
+
     width:100% !important;
+
     height:100% !important;
-    object-fit:contain;
+
+    object-fit:cover !important;
+
 }
 
-  #scanner.success {
-    border-color: green;
-  }
 
-  #message {
-    font-weight: bold;
-    margin-bottom: 10px;
-  }
 
-  input:not([type="checkbox"]), select, textarea, button {
-    display: block;
-    margin: 10px 0;
-    width: 100%;
-    padding: 8px;
-    font-size: 16px;
-  }
+#scanner.success {
 
-  input[type="checkbox"] {
-    width: auto;
-    transform: scale(1.2);
-  }
+    border-color:green;
 
-  label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 10px 0;
-  }
+}
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-  }
 
-  th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
-  }
-</style>
-</head>
-<body>
 
-<h2>Баркод скенер за попис на ОС</h2>
+#message {
 
-<div id="scanner"></div>
-<div id="message"></div>
+    font-weight:bold;
 
-<form id="inventoryForm">
-  <input type="text" id="barcode" placeholder="Инвентарен број" readonly>
+    margin:10px 0;
 
-  <!-- Podrum -->
-  <label>
-    <input type="checkbox" id="podrum">
-    Подрум
-  </label>
+    min-height:20px;
 
-  <!-- Sistem sala -->
-  <label>
-    <input type="checkbox" id="sistemsala">
-    Систем сала
-  </label>
+}
 
-  <input type="text" id="location" placeholder="Внесете број на канцеларија" required>
 
-  <select id="condition" required>
-    <option value="">Изберете состојба</option>
-    <option value="Се користи">Се користи</option>
-    <option value="За расход">За расход</option>
-    <option value="За донација">За донација</option>
-  </select>
-
-  <textarea id="description" placeholder="Опис/Забелешка"></textarea>
-
-  <button type="submit">Зачувај</button>
-</form>
-
-<h3>Зачувани податоци</h3>
-<table id="inventoryTable">
-  <thead>
-    <tr>
-      <th>Инв.број</th>
-      <th>Канцеларија</th>
-      <th>Состојба</th>
-      <th>Опис</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
-<script src="https://unpkg.com/html5-qrcode"></script>
-
-<script>
-const scannerDiv = document.getElementById("scanner");
-const barcodeInput = document.getElementById("barcode");
-const tableBody = document.querySelector("#inventoryTable tbody");
-const messageDiv = document.getElementById("message");
-
-const locationInput = document.getElementById("location");
-const podrumCheckbox = document.getElementById("podrum");
-const sistemSalaCheckbox = document.getElementById("sistemsala");
-
-let inventory = [];
-let lastScanned = null;
 
 /* =========================
-   CHECKBOX LOGIC
+   FORM
 ========================= */
-function updateLocationFromCheckboxes() {
-  if (podrumCheckbox.checked) {
-    locationInput.value = "Подрум";
-    locationInput.disabled = true;
-    locationInput.removeAttribute("required");
-    sistemSalaCheckbox.checked = false;
-  } 
-  else if (sistemSalaCheckbox.checked) {
-    locationInput.value = "Систем сала";
-    locationInput.disabled = true;
-    locationInput.removeAttribute("required");
-    podrumCheckbox.checked = false;
-  } 
-  else {
-    locationInput.value = "";
-    locationInput.disabled = false;
-    locationInput.setAttribute("required", true);
-  }
+
+
+input:not([type="checkbox"]),
+select,
+textarea,
+button {
+
+
+    display:block;
+
+    width:100%;
+
+    padding:10px;
+
+    margin:10px 0;
+
+    font-size:16px;
+
+    box-sizing:border-box;
+
 }
 
-podrumCheckbox.addEventListener("change", updateLocationFromCheckboxes);
-sistemSalaCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 
-/* =========================
-   AUDIO (INDUSTRIAL BEEP)
-========================= */
-let audioCtx = null;
 
-function initAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
+textarea {
 
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
+    height:80px;
+
 }
 
-["click", "touchstart", "keydown"].forEach(event => {
-  document.addEventListener(event, initAudio, { once: true });
-});
 
-function playBeep() {
-  if (!audioCtx) return;
 
-  const now = audioCtx.currentTime;
+input[type="checkbox"] {
 
-  function beep(startTime) {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    transform:scale(1.3);
 
-    osc.type = "square"; // aggressive scanner sound
-    osc.frequency.setValueAtTime(1800, startTime); // high pitch
-
-    // envelope (attack + decay)
-    gain.gain.setValueAtTime(0, startTime);
-    gain.gain.linearRampToValueAtTime(0.6, startTime + 0.005); // loud
-    gain.gain.linearRampToValueAtTime(0, startTime + 0.08);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    osc.start(startTime);
-    osc.stop(startTime + 0.08);
-  }
-
-  // 🔥 DOUBLE BEEP (industrial style)
-  beep(now);
-  beep(now + 0.12);
 }
-/* =========================
-   MESSAGE
-========================= */
-function showMessage(msg, isError=false) {
-  messageDiv.style.color = isError ? "red" : "green";
-  messageDiv.textContent = msg;
-  setTimeout(() => messageDiv.textContent = "", 2000);
+
+
+
+label {
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    margin:12px 0;
+
 }
+
+
 
 /* =========================
    TABLE
 ========================= */
-function renderTable() {
-  tableBody.innerHTML = "";
-  inventory.forEach(entry => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${entry.barcode}</td>
-      <td>${entry.location}</td>
-      <td>${entry.condition}</td>
-      <td>${entry.description}</td>
-    `;
-    tableBody.appendChild(tr);
-  });
+
+
+table {
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    margin-top:20px;
+
 }
 
+
+th,
+td {
+
+    border:1px solid #ccc;
+
+    padding:8px;
+
+    text-align:left;
+
+}
+
+
+button {
+
+    background:#1976d2;
+
+    color:white;
+
+    border:none;
+
+    border-radius:5px;
+
+}
+
+
+button:hover {
+
+    background:#0d47a1;
+
+}
+
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<h2>
+Баркод скенер за попис на ОС
+</h2>
+
+
+
+<!-- CAMERA -->
+
+<div id="scanner"></div>
+
+
+<div id="message"></div>
+
+
+
+
+<!-- INVENTORY FORM -->
+
+
+<form id="inventoryForm">
+
+
+<input 
+type="text" 
+id="barcode" 
+placeholder="Инвентарен број"
+readonly>
+
+
+
+<label>
+
+<input 
+type="checkbox" 
+id="podrum">
+
+Подрум
+
+</label>
+
+
+
+<label>
+
+<input 
+type="checkbox" 
+id="sistemsala">
+
+Систем сала
+
+</label>
+
+
+
+
+<input
+
+type="text"
+
+id="location"
+
+placeholder="Внесете број на канцеларија"
+
+required
+
+>
+
+
+
+
+<select id="condition" required>
+
+
+<option value="">
+Изберете состојба
+</option>
+
+
+<option value="Се користи">
+Се користи
+</option>
+
+
+<option value="За расход">
+За расход
+</option>
+
+
+<option value="За донација">
+За донација
+</option>
+
+
+</select>
+
+
+
+
+<textarea
+
+id="description"
+
+placeholder="Опис/Забелешка"
+
+></textarea>
+
+
+
+
+<button type="submit">
+
+Зачувај
+
+</button>
+
+
+</form>
+
+
+
+
+
+<h3>
+Зачувани податоци
+</h3>
+
+
+
+
+<table id="inventoryTable">
+
+
+<thead>
+
+
+<tr>
+
+<th>
+Инв.број
+</th>
+
+
+<th>
+Канцеларија
+</th>
+
+
+<th>
+Состојба
+</th>
+
+
+<th>
+Опис
+</th>
+
+
+</tr>
+
+
+</thead>
+
+
+
+<tbody>
+
+</tbody>
+
+
+</table>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+
+<script>
+
+
+const scannerDiv = document.getElementById("scanner");
+
+const barcodeInput = document.getElementById("barcode");
+
+const messageDiv = document.getElementById("message");
+
+const tableBody = document.querySelector("#inventoryTable tbody");
+
+
+const locationInput = document.getElementById("location");
+
+const podrumCheckbox = document.getElementById("podrum");
+
+const sistemSalaCheckbox = document.getElementById("sistemsala");
+
+
+
+let inventory=[];
+
+let lastScanned=null;
+
+
+
 /* =========================
-   SCANNER
+   LOCATION CHECKBOX LOGIC
 ========================= */
+
+
+function updateLocation(){
+
+    if(podrumCheckbox.checked){
+
+        locationInput.value="Подрум";
+
+        locationInput.disabled=true;
+
+        locationInput.removeAttribute("required");
+
+        sistemSalaCheckbox.checked=false;
+
+    }
+
+
+    else if(sistemSalaCheckbox.checked){
+
+
+        locationInput.value="Систем сала";
+
+        locationInput.disabled=true;
+
+        locationInput.removeAttribute("required");
+
+        podrumCheckbox.checked=false;
+
+    }
+
+
+    else{
+
+
+        locationInput.value="";
+
+        locationInput.disabled=false;
+
+        locationInput.setAttribute("required","true");
+
+
+    }
+
+}
+
+
+
+podrumCheckbox.addEventListener(
+"change",
+updateLocation
+);
+
+
+sistemSalaCheckbox.addEventListener(
+"change",
+updateLocation
+);
+
+
+
+
+
+/* =========================
+   MESSAGE
+========================= */
+
+
+function showMessage(text,error=false){
+
+
+    messageDiv.style.color = error ? "red" : "green";
+
+    messageDiv.innerText=text;
+
+
+    setTimeout(()=>{
+
+        messageDiv.innerText="";
+
+    },2500);
+
+
+}
+
+
+
+
+
+
+/* =========================
+   INDUSTRIAL BEEP
+========================= */
+
+
+let audioCtx=null;
+
+
+
+function initAudio(){
+
+
+    if(!audioCtx){
+
+        audioCtx=new AudioContext();
+
+    }
+
+
+    if(audioCtx.state==="suspended"){
+
+        audioCtx.resume();
+
+    }
+
+
+}
+
+
+
+document.addEventListener(
+"click",
+initAudio,
+{once:true}
+);
+
+
+document.addEventListener(
+"touchstart",
+initAudio,
+{once:true}
+);
+
+
+
+
+function playBeep(){
+
+
+    if(!audioCtx)
+        return;
+
+
+
+    let now=audioCtx.currentTime;
+
+
+    let osc=audioCtx.createOscillator();
+
+    let gain=audioCtx.createGain();
+
+
+
+    osc.type="square";
+
+    osc.frequency.value=1800;
+
+
+
+    gain.gain.setValueAtTime(
+        0.5,
+        now
+    );
+
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.01,
+        now+0.08
+    );
+
+
+
+    osc.connect(gain);
+
+    gain.connect(audioCtx.destination);
+
+
+
+    osc.start(now);
+
+    osc.stop(now+0.08);
+
+
+
+}
+
+
+
+
+
+
+
+/* =========================
+   TABLE
+========================= */
+
+
+function renderTable(){
+
+
+    tableBody.innerHTML="";
+
+
+    inventory.forEach(item=>{
+
+
+        let row=document.createElement("tr");
+
+
+        row.innerHTML=`
+
+        <td>${item.barcode}</td>
+
+        <td>${item.location}</td>
+
+        <td>${item.condition}</td>
+
+        <td>${item.description}</td>
+
+        `;
+
+
+        tableBody.appendChild(row);
+
+
+
+    });
+
+
+}
+
+
+
+
+
+
+
+
+/* =========================
+   SCANNER CONFIG
+========================= */
+
+
 const html5QrCode = new Html5Qrcode("scanner");
 
-const config = {
 
-    fps:20,
 
-    qrbox:function(viewfinderWidth, viewfinderHeight){
+const config={
 
-        const minEdge=Math.min(viewfinderWidth,viewfinderHeight);
 
-        return{
-            width:minEdge,
-            height:minEdge
-        };
+    fps:15,
+
+
+    qrbox:{
+
+        width:300,
+
+        height:300
+
     },
 
-    aspectRatio:1.777,
 
-    disableFlip:false,
+    aspectRatio:1.777777,
 
-    rememberLastUsedCamera:true,
+
 
     formatsToSupport:[
 
+
         Html5QrcodeSupportedFormats.QR_CODE,
+
+
         Html5QrcodeSupportedFormats.DATA_MATRIX,
-        Html5QrcodeSupportedFormats.AZTEC,
-        Html5QrcodeSupportedFormats.PDF_417,
+
+
+        Html5QrcodeSupportedFormats.CODE_128,
+
 
         Html5QrcodeSupportedFormats.CODE_39,
-        Html5QrcodeSupportedFormats.CODE_93,
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.EAN_8,
+
+
         Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.ITF,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E
+
+
+        Html5QrcodeSupportedFormats.EAN_8,
+
+
+        Html5QrcodeSupportedFormats.PDF_417
+
 
     ],
 
+
+
     experimentalFeatures:{
+
         useBarCodeDetectorIfSupported:true
+
     }
 
+
 };
-function onScanSuccess(decodedText) {
-  if (decodedText !== lastScanned) {
+
+
+
+
+
+
+/* =========================
+   SCAN SUCCESS
+========================= */
+
+
+function onScanSuccess(decodedText){
+
+
+
+    if(decodedText===lastScanned)
+        return;
+
+
+
+    lastScanned=decodedText;
+
+
 
     initAudio();
-    playBeep(); // 🔊 industrial beep
 
-    barcodeInput.value = decodedText;
+    playBeep();
+
+
+
+    barcodeInput.value=decodedText;
+
+
 
     scannerDiv.classList.add("success");
-    setTimeout(() => scannerDiv.classList.remove("success"), 200);
 
-    lastScanned = decodedText;
-  }
+
+
+    setTimeout(()=>{
+
+        scannerDiv.classList.remove("success");
+
+    },300);
+
+
+
+    showMessage(
+        "Скенирано: "+decodedText
+    );
+
+
 }
+
+
+
+
+
+
+
+
+
+/* =========================
+   START CAMERA
+========================= */
+
 
 async function startScanner(){
 
-    const cameraConfig = {
-    facingMode: {
-        ideal: "environment"
-    }
-};
+
 
     try{
 
+
         await html5QrCode.start(
 
-            cameraConfig,
+
+            {
+
+
+                facingMode:{
+
+                    ideal:"environment"
+
+                }
+
+
+            },
+
 
             config,
 
+
             onScanSuccess
 
+
+
         );
-       const track=html5QrCode.getRunningTrack();
 
-const capabilities=track.getCapabilities();
 
-const constraints={};
 
-if(capabilities.focusMode){
+        console.log(
+            "Camera started"
+        );
 
-    constraints.advanced=[
-        {
-            focusMode:"continuous"
-        }
-    ];
 
-}
-
-if(capabilities.zoom){
-
-    constraints.advanced=[
-        ...(constraints.advanced||[]),
-        {
-            zoom:Math.min(2,capabilities.zoom.max)
-        }
-    ];
-
-}
-
-track.applyConstraints(constraints).catch(()=>{});
     }
-    catch(e){
 
-        console.log(e);
 
-        const cameras=await Html5Qrcode.getCameras();
+    catch(error){
 
-        if(cameras.length){
 
-            await html5QrCode.start(
+        console.error(
+            error
+        );
 
-                cameras[cameras.length-1].id,
 
-                config,
 
-                onScanSuccess
+        try{
 
+
+            const cameras =
+            await Html5Qrcode.getCameras();
+
+
+
+            if(cameras.length){
+
+
+
+                await html5QrCode.start(
+
+
+                    cameras[0].id,
+
+
+                    config,
+
+
+                    onScanSuccess
+
+
+                );
+
+
+            }
+
+
+        }
+
+
+        catch(e){
+
+
+            showMessage(
+                "Камерата не е достапна",
+                true
             );
 
+
+            console.error(e);
+
+
         }
 
+
     }
+
+
 
 }
 
+
+
+
+
+startScanner();
+
+
+
+
 /* =========================
-   SUBMIT
+   SAVE TO GOOGLE SHEETS
 ========================= */
-document.getElementById("inventoryForm").addEventListener("submit", e => {
-  e.preventDefault();
 
-  const entry = {
-    barcode: barcodeInput.value,
-    location: locationInput.value,
-    condition: document.getElementById("condition").value,
-    description: document.getElementById("description").value
-  };
 
-  if (!entry.barcode) {
-    showMessage("Скенирај баркод!", true);
-    return;
-  }
+document
+.getElementById("inventoryForm")
+.addEventListener("submit", async function(e){
 
-  const webAppUrl = "https://script.google.com/macros/s/AKfycbxb1pxZxUrmITmtLZF6wIaCQaJ9pFYA2AqbP0HMBgAA5zp2RO-fC0Ik0aSk4R_0J7JeMQ/exec";
 
-  fetch(webAppUrl, {
-    method: "POST",
-    body: JSON.stringify(entry)
-  })
-  .then(res => res.text())
-  .then(text => {
-    let response;
-    try { response = JSON.parse(text); }
-    catch { response = { status:"error", message:text }; }
+    e.preventDefault();
 
-    if (response.status === "success") {
-      inventory.push(entry);
-      renderTable();
 
-      document.getElementById("inventoryForm").reset();
 
-      locationInput.disabled = false;
-      locationInput.setAttribute("required", true);
+    const entry={
 
-      barcodeInput.value = "";
-      lastScanned = null;
 
-      showMessage("Зачувано!");
-    } else {
-      showMessage("Error: " + response.message, true);
+        barcode: barcodeInput.value,
+
+
+        location: locationInput.value,
+
+
+        condition:
+        document.getElementById("condition").value,
+
+
+        description:
+        document.getElementById("description").value
+
+
+
+    };
+
+
+
+
+
+    if(!entry.barcode){
+
+
+        showMessage(
+            "Скенирај баркод!",
+            true
+        );
+
+
+        return;
+
+
     }
-  })
-  .catch(() => {
-    showMessage("Грешка при зачувување!", true);
-  });
+
+
+
+
+    if(!entry.condition){
+
+
+        showMessage(
+            "Изберете состојба!",
+            true
+        );
+
+
+        return;
+
+
+    }
+
+
+
+
+
+    const webAppUrl =
+"https://script.google.com/macros/s/AKfycbxb1pxZxUrmITmtLZF6wIaCQaJ9pFYA2AqbP0HMBgAA5zp2RO-fC0Ik0aSk4R_0J7JeMQ/exec";
+
+
+
+
+
+    try{
+
+
+        const response =
+        await fetch(
+            webAppUrl,
+            {
+
+                method:"POST",
+
+                body:JSON.stringify(entry)
+
+            }
+
+        );
+
+
+
+        const text =
+        await response.text();
+
+
+
+
+        let result;
+
+
+
+        try{
+
+            result=JSON.parse(text);
+
+        }
+
+        catch{
+
+            result={
+                status:"error",
+                message:text
+            };
+
+        }
+
+
+
+
+
+
+        if(result.status==="success"){
+
+
+
+            inventory.push(entry);
+
+
+            renderTable();
+
+
+
+            document
+            .getElementById("inventoryForm")
+            .reset();
+
+
+
+
+            locationInput.disabled=false;
+
+
+            locationInput.setAttribute(
+                "required",
+                "true"
+            );
+
+
+
+            barcodeInput.value="";
+
+
+            lastScanned=null;
+
+
+
+            showMessage(
+                "Успешно зачувано!"
+            );
+
+
+
+        }
+
+
+        else{
+
+
+            showMessage(
+                "Грешка: "+result.message,
+                true
+            );
+
+
+        }
+
+
+
+
+
+    }
+
+
+    catch(error){
+
+
+        console.error(error);
+
+
+
+        showMessage(
+            "Грешка при зачувување!",
+            true
+        );
+
+
+
+    }
+
+
+
+
 });
+
+
+
+
+
 </script>
- <footer style="margin-top:40px; text-align:center; font-size:14px; color:#666;">
-  © 2026 GorgiKo. Сите права задржани.
+
+
+
+
+
+<footer
+
+style="
+
+margin-top:40px;
+
+text-align:center;
+
+font-size:14px;
+
+color:#666;
+
+">
+
+
+© 2026 GorgiKo. Сите права задржани.
+
+
 </footer>
+
+
+
 </body>
+
+
 </html>
+
+
+
+
