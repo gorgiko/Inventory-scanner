@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Баркод скенер за попис на ОС</title>
-
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+<script src="https://unpkg.com/@zxing/library@0.20.0"></script>
 <style>
 
 * {
@@ -55,7 +54,7 @@ body {
 
     object-fit:cover;
 
-    transform:scale(1.15);
+    
 
 }
 
@@ -479,7 +478,11 @@ const messageDiv =
 document.getElementById("message");
 
 
-let html5QrCode = null;
+let codeReader = new ZXing.BrowserMultiFormatReader();
+
+let videoElement = null;
+
+let currentTrack = null;
 
 let scannerRunning = false;
 
@@ -487,7 +490,7 @@ let lastScanned = "";
 
 let torchEnabled = false;
 
-let cameraId = null;
+
 
 
 
@@ -648,20 +651,32 @@ messageDiv.innerHTML="";
 async function getCamera(){
 
 
-try{
-
-
-const cameras =
-await Html5Qrcode.getCameras();
+const devices =
+await codeReader.listVideoInputDevices();
 
 
 
-if(cameras.length===0){
+if(devices.length===0){
 
 throw "No camera";
 
 }
 
+
+
+let camera =
+devices.find(
+d =>
+d.label.toLowerCase()
+.includes("back")
+);
+
+
+
+return camera || devices[0];
+
+
+}
 
 
 /*
@@ -705,30 +720,42 @@ true
 /* =========================
    SCANNER CONFIG
 ========================= */
+const hints = new Map();
 
 
-const scannerConfig = {
+hints.set(
+
+ZXing.DecodeHintType.POSSIBLE_FORMATS,
+
+[
+
+ZXing.BarcodeFormat.DATA_MATRIX,
+
+ZXing.BarcodeFormat.CODE_128,
+
+ZXing.BarcodeFormat.CODE_39,
+
+ZXing.BarcodeFormat.QR_CODE
+
+]
+
+);
 
 
-    fps:20,
+hints.set(
+
+ZXing.DecodeHintType.TRY_HARDER,
+
+true
+
+);
 
 
-    qrbox:function(width,height){
 
-
-        let size = Math.min(
-            width * 0.90,
-            height * 0.60
-        );
-
-
-        return {
-
-            width:size,
-
-            height:size
-
-        };
+const codeReader =
+new ZXing.BrowserMultiFormatReader(
+hints
+);
 
 
     },
@@ -843,46 +870,114 @@ showMessage(
 async function startScanner(){
 
 
-
 if(scannerRunning)
 return;
 
 
-
-await getCamera();
-
+try{
 
 
-if(!cameraId)
-return;
+scannerDiv.innerHTML="";
 
 
+videoElement =
+document.createElement("video");
 
-html5QrCode =
-new Html5Qrcode(
-"scanner"
+
+videoElement.setAttribute(
+"autoplay",
+true
+);
+
+
+videoElement.setAttribute(
+"muted",
+true
+);
+
+
+videoElement.setAttribute(
+"playsinline",
+true
 );
 
 
 
-html5QrCode.start(
+scannerDiv.appendChild(
+videoElement
+);
 
 
-cameraId,
+
+let camera =
+await getCamera();
 
 
-scannerConfig,
+
+await codeReader.decodeFromVideoDevice(
+
+camera.deviceId,
+
+videoElement,
+
+(result,error)=>{
 
 
-onScanSuccess
+if(result){
 
 
-)
+onScanSuccess(
+result.getText()
+);
 
-.then(()=>{
+
+}
+
+
+}
+
+
+);
+
 
 
 scannerRunning=true;
+
+
+
+setTimeout(()=>{
+
+
+try{
+
+
+currentTrack =
+videoElement.srcObject
+.getVideoTracks()[0];
+
+
+
+currentTrack.applyConstraints({
+
+advanced:[
+
+{
+focusMode:"continuous"
+}
+
+]
+
+});
+
+
+
+}
+catch(e){}
+
+
+
+},2000);
+
 
 
 showMessage(
@@ -891,24 +986,25 @@ showMessage(
 
 
 
-})
+}
 
-.catch(err=>{
+catch(e){
+
+
+console.error(e);
 
 
 showMessage(
-"Грешка камера: "+err,
+"Камера грешка",
 true
 );
-
-
-});
-
 
 
 }
 
 
+
+}
 
 
 
