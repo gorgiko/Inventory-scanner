@@ -711,70 +711,67 @@ true
 const scannerConfig = {
 
 
-fps:15,
+    fps:10,
 
 
-qrbox:function(width,height){
+    qrbox:function(width,height){
 
 
-let size =
-Math.min(
-width*0.75,
-300
-);
+        let size = Math.min(
+            width * 0.90,
+            height * 0.60
+        );
 
 
-return {
-width:size,
-height:size
-};
+        return {
+
+            width:size,
+
+            height:size
+
+        };
 
 
-},
+    },
 
 
-
-aspectRatio:1.777,
-
+    disableFlip:false,
 
 
-formatsToSupport:[
+    formatsToSupport:[
 
 
-Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.DATA_MATRIX,
 
 
-Html5QrcodeSupportedFormats.DATA_MATRIX,
+        Html5QrcodeSupportedFormats.QR_CODE,
 
 
-Html5QrcodeSupportedFormats.PDF_417,
+        Html5QrcodeSupportedFormats.CODE_128,
 
 
-Html5QrcodeSupportedFormats.AZTEC,
+        Html5QrcodeSupportedFormats.CODE_39,
 
 
-Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.EAN_13,
 
 
-Html5QrcodeSupportedFormats.CODE_39
+        Html5QrcodeSupportedFormats.PDF_417
 
 
-],
+    ],
 
 
-
-experimentalFeatures:{
-
-
-useBarCodeDetectorIfSupported:true
+    experimentalFeatures:{
 
 
-}
+        useBarCodeDetectorIfSupported:true
 
+
+    }
 
 
 };
-
 
 
 
