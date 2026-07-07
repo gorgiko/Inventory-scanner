@@ -709,67 +709,35 @@ true
 const scannerConfig = {
 
 
-fps:20,
+    fps:15,
 
 
-qrbox:function(width,height){
+    qrbox:function(width,height){
 
 
-let size =
-Math.min(
-width*0.75,
-300
-);
+        return {
+
+            width: Math.floor(width * 0.90),
+
+            height: Math.floor(height * 0.50)
+
+        };
 
 
-return {
-width:size,
-height:size
-};
+    },
 
 
-},
+    formatsToSupport:[
 
 
+        // KEEP ONLY YOUR BARCODE TYPE
 
-aspectRatio:1.777,
+        Html5QrcodeSupportedFormats.DATA_MATRIX,
 
-
-
-formatsToSupport:[
-
-
-Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.CODE_128
 
 
-Html5QrcodeSupportedFormats.DATA_MATRIX,
-
-
-Html5QrcodeSupportedFormats.PDF_417,
-
-
-Html5QrcodeSupportedFormats.AZTEC,
-
-
-Html5QrcodeSupportedFormats.CODE_128,
-
-
-Html5QrcodeSupportedFormats.CODE_39
-
-
-],
-
-
-
-experimentalFeatures:{
-
-
-useBarCodeDetectorIfSupported:true
-
-
-}
-
-
+    ]
 
 };
 
@@ -860,20 +828,36 @@ return;
 
 
 
-html5QrCode =
-new Html5Qrcode(
-"scanner"
-);
-
-
-
 html5QrCode.start(
-
 
 cameraId,
 
 
-scannerConfig,
+{
+
+...scannerConfig,
+
+
+videoConstraints:{
+
+
+width:{
+ideal:1920
+},
+
+
+height:{
+ideal:1080
+},
+
+
+focusMode:"continuous"
+
+
+}
+
+
+},
 
 
 onScanSuccess
