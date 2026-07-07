@@ -3,1647 +3,323 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Баркод скенер за попис на ОС</title>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+  }
+
+  #scanner {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 20px;
+    border: 2px solid #ccc;
+  }
+
+  #scanner.success {
+    border-color: green;
+  }
+
+  #message {
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  input:not([type="checkbox"]), select, textarea, button {
+    display: block;
+    margin: 10px 0;
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+  }
+
+  input[type="checkbox"] {
+    width: auto;
+    transform: scale(1.2);
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Баркод скенер за попис на ОС</h2>
+
+<div id="scanner"></div>
+<div id="message"></div>
+
+<form id="inventoryForm">
+  <input type="text" id="barcode" placeholder="Инвентарен број" readonly>
+
+  <!-- Podrum -->
+  <label>
+    <input type="checkbox" id="podrum">
+    Подрум
+  </label>
+
+  <!-- Sistem sala -->
+  <label>
+    <input type="checkbox" id="sistemsala">
+    Систем сала
+  </label>
+
+  <input type="text" id="location" placeholder="Внесете број на канцеларија" required>
+
+  <select id="condition" required>
+    <option value="">Изберете состојба</option>
+    <option value="Се користи">Се користи</option>
+    <option value="За расход">За расход</option>
+    <option value="За донација">За донација</option>
+  </select>
+
+  <textarea id="description" placeholder="Опис/Забелешка"></textarea>
+
+  <button type="submit">Зачувај</button>
+</form>
+
+<h3>Зачувани податоци</h3>
+<table id="inventoryTable">
+  <thead>
+    <tr>
+      <th>Инв.број</th>
+      <th>Канцеларија</th>
+      <th>Состојба</th>
+      <th>Опис</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
-<style>
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin:0;
-    font-family: Arial, sans-serif;
-    background:#f5f5f5;
-}
-
-
-/* =========================
-   FULL SCREEN CAMERA
-========================= */
-
-#cameraContainer {
-
-    position:relative;
-
-    width:100%;
-
-    height:70vh;
-
-    min-height:400px;
-
-    background:black;
-
-    overflow:hidden;
-
-}
-
-#scanner {
-
-    width:100%;
-    height:100%;
-
-}
-
-
-/* camera video */
-
-#scanner video {
-
-    width:100% !important;
-    height:100% !important;
-
-    object-fit:cover;
-
-}
-
-
-/* scanning frame */
-
-.scan-box {
-
-    position:absolute;
-
-    top:50%;
-    left:50%;
-
-    transform:translate(-50%,-50%);
-
-    width:75%;
-    height:250px;
-
-    border:3px solid #00ff00;
-
-    border-radius:15px;
-
-    pointer-events:none;
-
-}
-
-
-/* moving laser */
-
-.scan-line {
-
-    position:absolute;
-
-    width:100%;
-    height:3px;
-
-    background:red;
-
-    top:50%;
-
-    animation:
-    scan 2s infinite;
-
-}
-
-
-@keyframes scan {
-
-0% {
-    top:20%;
-}
-
-50% {
-
-    top:80%;
-}
-
-100% {
-
-    top:20%;
-}
-
-}
-
-
-
-/* buttons over camera */
-
-.camera-buttons {
-
-    position:absolute;
-
-    bottom:30px;
-
-    left:0;
-    right:0;
-
-    display:flex;
-
-    justify-content:center;
-
-    gap:15px;
-
-}
-
-
-.camera-buttons button {
-
-
-    padding:15px 25px;
-
-    border:none;
-
-    border-radius:30px;
-
-    background:white;
-
-    font-size:18px;
-
-}
-
-
-
-/* =========================
-   CONTENT
-========================= */
-
-
-#content {
-
-    padding:15px;
-
-}
-
-
-h2 {
-
-    text-align:center;
-
-}
-
-
-
-#message {
-
-    text-align:center;
-
-    font-weight:bold;
-
-    margin:10px;
-
-}
-
-
-
-input:not([type="checkbox"]),
-select,
-textarea,
-button {
-
-
-    width:100%;
-
-    padding:12px;
-
-    margin:8px 0;
-
-    font-size:16px;
-
-}
-
-
-
-textarea {
-
-    height:80px;
-
-}
-
-
-label {
-
-
-    display:flex;
-
-    align-items:center;
-
-    gap:10px;
-
-    margin:10px 0;
-
-}
-
-
-input[type="checkbox"] {
-
-
-
-}
-
-
-
-table {
-
-    width:100%;
-
-    border-collapse:collapse;
-
-    background:white;
-
-}
-
-
-th,td {
-
-    border:1px solid #ccc;
-
-    padding:8px;
-
-}
-
-
-.success {
-
-    border:5px solid lime;
-
-}
-
-
-
-</style>
-
-</head>
-
-
-<body>
-
-
-<!-- =========================
-     CAMERA
-========================= -->
-
-
-<div id="cameraContainer">
-
-
-    <div id="scanner"></div>
-
-
-    <div class="scan-box">
-        <div class="scan-line"></div>
-    </div>
-
-
-    <div class="camera-buttons">
-
-
-        <button id="startCamera">
-            📷 Start
-        </button>
-
-
-        <button id="stopCamera">
-            ⛔ Stop
-        </button>
-
-
-        <button id="torch">
-            🔦 Flash
-        </button>
-
-
-    </div>
-
-
-</div>
-
-
-
-<div id="content">
-
-
-<h2>
-Баркод скенер за попис на ОС
-</h2>
-
-
-<div id="message"></div>
-
-
-
-<form id="inventoryForm">
-
-
-<input 
-id="barcode"
-type="text"
-placeholder="Инвентарен број"
-readonly>
-
-
-
-<label>
-
-<input 
-type="checkbox"
-id="podrum">
-
-Подрум
-
-</label>
-
-
-
-<label>
-
-<input 
-type="checkbox"
-id="sistemsala">
-
-Систем сала
-
-</label>
-
-
-
-<input
-id="location"
-placeholder="Внесете број на канцеларија"
-required>
-
-
-
-<select id="condition" required>
-
-
-<option value="">
-Изберете состојба
-</option>
-
-
-<option>
-Се користи
-</option>
-
-
-<option>
-За расход
-</option>
-
-
-<option>
-За донација
-</option>
-
-
-</select>
-
-
-
-<textarea
-id="description"
-placeholder="Опис/Забелешка">
-</textarea>
-
-
-
-<button type="submit">
-
-💾 Зачувај
-
-</button>
-
-
-</form>
-
-
-
-<h3>
-Зачувани податоци
-</h3>
-
-
-<table id="inventoryTable">
-
-
-<thead>
-
-<tr>
-
-<th>
-Инв.број
-</th>
-
-<th>
-Локација
-</th>
-
-
-<th>
-Состојба
-</th>
-
-
-<th>
-Опис
-</th>
-
-
-</tr>
-
-
-</thead>
-
-
-
-<tbody>
-
-</tbody>
-
-
-
-</table>
-
-
-</div>
 <script>
-
-
-/* =========================
-   ELEMENTS
-========================= */
-
 const scannerDiv = document.getElementById("scanner");
+const barcodeInput = document.getElementById("barcode");
+const tableBody = document.querySelector("#inventoryTable tbody");
+const messageDiv = document.getElementById("message");
 
-const barcodeInput =
-document.getElementById("barcode");
+const locationInput = document.getElementById("location");
+const podrumCheckbox = document.getElementById("podrum");
+const sistemSalaCheckbox = document.getElementById("sistemsala");
 
-const messageDiv =
-document.getElementById("message");
-
-
-let html5QrCode = null;
-
-let scannerRunning = false;
-
-let lastScanned = "";
-
-let torchEnabled = false;
-
-let cameraId = null;
-
-
+let inventory = [];
+let lastScanned = null;
 
 /* =========================
-   AUDIO BEEP
+   CHECKBOX LOGIC
 ========================= */
+function updateLocationFromCheckboxes() {
+  if (podrumCheckbox.checked) {
+    locationInput.value = "Подрум";
+    locationInput.disabled = true;
+    locationInput.removeAttribute("required");
+    sistemSalaCheckbox.checked = false;
+  } 
+  else if (sistemSalaCheckbox.checked) {
+    locationInput.value = "Систем сала";
+    locationInput.disabled = true;
+    locationInput.removeAttribute("required");
+    podrumCheckbox.checked = false;
+  } 
+  else {
+    locationInput.value = "";
+    locationInput.disabled = false;
+    locationInput.setAttribute("required", true);
+  }
+}
 
+podrumCheckbox.addEventListener("change", updateLocationFromCheckboxes);
+sistemSalaCheckbox.addEventListener("change", updateLocationFromCheckboxes);
 
+/* =========================
+   AUDIO (INDUSTRIAL BEEP)
+========================= */
 let audioCtx = null;
 
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
 
-function initAudio(){
-
-
-    if(!audioCtx){
-
-        audioCtx =
-        new(window.AudioContext ||
-        window.webkitAudioContext)();
-
-    }
-
-
-    if(audioCtx.state==="suspended"){
-
-        audioCtx.resume();
-
-    }
-
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
 }
 
+["click", "touchstart", "keydown"].forEach(event => {
+  document.addEventListener(event, initAudio, { once: true });
+});
 
+function playBeep() {
+  if (!audioCtx) return;
 
-document.addEventListener(
-"click",
-initAudio,
-{once:true}
-);
+  const now = audioCtx.currentTime;
 
+  function beep(startTime) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
+    osc.type = "square"; // aggressive scanner sound
+    osc.frequency.setValueAtTime(1800, startTime); // high pitch
 
-function playBeep(){
+    // envelope (attack + decay)
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.6, startTime + 0.005); // loud
+    gain.gain.linearRampToValueAtTime(0, startTime + 0.08);
 
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
 
-if(!audioCtx)
-return;
+    osc.start(startTime);
+    osc.stop(startTime + 0.08);
+  }
 
-
-const now =
-audioCtx.currentTime;
-
-
-
-function beep(time){
-
-
-const osc =
-audioCtx.createOscillator();
-
-
-const gain =
-audioCtx.createGain();
-
-
-
-osc.type="square";
-
-
-osc.frequency.setValueAtTime(
-1800,
-time
-);
-
-
-
-gain.gain.setValueAtTime(
-0,
-time
-);
-
-
-gain.gain.linearRampToValueAtTime(
-0.7,
-time+0.01
-);
-
-
-gain.gain.linearRampToValueAtTime(
-0,
-time+0.1
-);
-
-
-
-osc.connect(gain);
-
-gain.connect(
-audioCtx.destination
-);
-
-
-
-osc.start(time);
-
-osc.stop(
-time+0.1
-);
-
-
+  // 🔥 DOUBLE BEEP (industrial style)
+  beep(now);
+  beep(now + 0.12);
 }
-
-
-
-beep(now);
-
-beep(now+0.15);
-
-
-}
-
-
-
-
-
 /* =========================
    MESSAGE
 ========================= */
-
-
-function showMessage(text,error=false){
-
-
-messageDiv.innerHTML=text;
-
-
-messageDiv.style.color =
-error ? "red" : "green";
-
-
-setTimeout(()=>{
-
-messageDiv.innerHTML="";
-
-},2000);
-
-
-
+function showMessage(msg, isError=false) {
+  messageDiv.style.color = isError ? "red" : "green";
+  messageDiv.textContent = msg;
+  setTimeout(() => messageDiv.textContent = "", 2000);
 }
-
-
-
 
 /* =========================
-   GET CAMERA
+   TABLE
 ========================= */
-
-
-async function getCamera(){
-
-
-const cameras =
-await Html5Qrcode.getCameras();
-
-
-
-if(!cameras.length){
-
-throw "No cameras detected";
-
+function renderTable() {
+  tableBody.innerHTML = "";
+  inventory.forEach(entry => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${entry.barcode}</td>
+      <td>${entry.location}</td>
+      <td>${entry.condition}</td>
+      <td>${entry.description}</td>
+    `;
+    tableBody.appendChild(tr);
+  });
 }
-
-
-
-console.log(cameras);
-
-
-
-cameraId =
-cameras[
-cameras.length-1
-].id;
-
-
-
-}
-
-
-
 
 /* =========================
-   SCANNER CONFIG
+   SCANNER
 ========================= */
+const html5QrCode = new Html5Qrcode("scanner");
 
-
-const scannerConfig = {
-
-
-    fps:20,
-
-
-    qrbox:function(width,height){
-
-
-        return {
-
-            width: Math.floor(width * 0.90),
-
-            height: Math.floor(height * 0.50)
-
-        };
-
-
-    },
-
-
-    formatsToSupport:[
-
-
-        // KEEP ONLY YOUR BARCODE TYPE
-
-        Html5QrcodeSupportedFormats.DATA_MATRIX,
-
-        Html5QrcodeSupportedFormats.CODE_128
-
-
-    ]
-
+const config = { 
+  fps: 10,
+  qrbox: 250,
+  formatsToSupport: [
+    Html5QrcodeSupportedFormats.QR_CODE,
+    Html5QrcodeSupportedFormats.DATA_MATRIX,
+    Html5QrcodeSupportedFormats.PDF_417,
+    Html5QrcodeSupportedFormats.AZTEC
+  ],
+  experimentalFeatures: { useBarCodeDetectorIfSupported: true }
 };
 
+function onScanSuccess(decodedText) {
+  if (decodedText !== lastScanned) {
 
+    initAudio();
+    playBeep(); // 🔊 industrial beep
 
+    barcodeInput.value = decodedText;
 
+    scannerDiv.classList.add("success");
+    setTimeout(() => scannerDiv.classList.remove("success"), 200);
 
-
-/* =========================
-   SCAN SUCCESS
-========================= */
-
-
-function onScanSuccess(decodedText){
-
-
-
-if(decodedText===lastScanned)
-return;
-
-
-
-lastScanned =
-decodedText;
-
-
-
-barcodeInput.value =
-decodedText;
-
-
-
-playBeep();
-
-
-
-scannerDiv.classList.add(
-"success"
-);
-
-
-
-setTimeout(()=>{
-
-
-scannerDiv.classList.remove(
-"success"
-);
-
-
-},300);
-
-
-
-showMessage(
-"Скениран: "+decodedText
-);
-
-
-
+    lastScanned = decodedText;
+  }
 }
 
-
-
-
-
-
-/* =========================
-   START CAMERA
-========================= */
-
-
-async function startScanner(){
-
-    if(scannerRunning)
-        return;
-
-
-    try{
-
-        await getCamera();
-
-
-        if(!cameraId){
-            showMessage("Камера не е пронајдена", true);
-            return;
-        }
-
-
-        html5QrCode = new Html5Qrcode("scanner");
-
-
-        await html5QrCode.start(
-
-            {
-                deviceId:{
-                    exact:cameraId
-                }
-            },
-
-
-            {
-
-                fps:10,
-
-                qrbox:{
-                    width:400,
-                    height:400
-                },
-
-
-                videoConstraints:{
-
-                    facingMode:"environment",
-
-                    width:{
-                        ideal:1920
-                    },
-
-                    height:{
-                        ideal:1080
-                    },
-
-
-                    advanced:[
-
-                        {
-                            focusMode:"continuous"
-                        },
-
-                        {
-                            exposureMode:"continuous"
-                        },
-
-                        {
-                            whiteBalanceMode:"continuous"
-                        }
-
-                    ]
-
-                },
-
-
-                formatsToSupport:[
-
-                    Html5QrcodeSupportedFormats.DATA_MATRIX,
-
-                    Html5QrcodeSupportedFormats.CODE_128
-
-                ]
-
-            },
-
-
-            onScanSuccess
-
-
-        );
-
-
-        scannerRunning=true;
-
-
-        enableAutoFocus();
-
-
-        showMessage(
-            "Камера активна"
-        );
-
-
-    }
-
-    catch(e){
-
-        console.error(e);
-
-        showMessage(
-            "Camera error: "+e,
-            true
-        );
-
-    }
-
+function startScanner() {
+  html5QrCode.start(
+    { facingMode: { exact: "environment" } },
+    config,
+    onScanSuccess
+  ).catch(() => {
+    html5QrCode.start({ facingMode: "user" }, config, onScanSuccess);
+  });
 }
-
-const track =
-video.srcObject
-.getVideoTracks()[0];
-
-
-
-track.applyConstraints({
-
-advanced:[
-
-{
-
-focusMode:"continuous"
-
-}
-
-]
-
-});
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-}
-
-
-},2000);
-
-showMessage(
-"Camera started"
-);
-
-
-
-}
-
-
-
-catch(error){
-
-
-console.error(error);
-
-
-showMessage(
-"Camera error: "+error,
-true
-);
-
-
-}
-
-
-
-}
-
-
-
-
-
-
-/* =========================
-   STOP CAMERA
-========================= */
-
-
-async function stopScanner(){
-
-
-
-if(
-html5QrCode &&
-scannerRunning
-){
-
-
-await html5QrCode.stop();
-
-
-
-html5QrCode.clear();
-
-
-
-scannerRunning=false;
-
-
-
-showMessage(
-"Камера стопирана"
-);
-
-
-
-}
-
-
-
-}
-
-
-
-
-
-/* =========================
-   FLASHLIGHT
-========================= */
-
-
-async function toggleTorch(){
-
-
-
-if(
-!html5QrCode ||
-!scannerRunning
-)
-return;
-
-
-
-try{
-
-
-torchEnabled =
-!torchEnabled;
-
-
-
-await html5QrCode.applyVideoConstraints({
-
-
-advanced:[
-
-{
-
-torch:
-torchEnabled
-
-}
-
-]
-
-
-});
-
-
-
-showMessage(
-torchEnabled ?
-"Флеш вклучен":
-"Флеш исклучен"
-);
-
-
-
-}
-catch(e){
-
-
-showMessage(
-"Флеш не е поддржан",
-true
-);
-
-
-}
-
-
-
-}
-
-
-
-
-
-/* =========================
- BUTTON EVENTS
-========================= */
-
-
-document
-.getElementById("startCamera")
-.onclick =
-startScanner;
-
-
-
-document
-.getElementById("stopCamera")
-.onclick =
-stopScanner;
-
-
-
-document
-.getElementById("torch")
-.onclick =
-toggleTorch;
-
-
-
-
-
-/*
-AUTO START
-*/
-
-
-window.onload=()=>{
-
 
 startScanner();
 
-
-};
-
-
-
-</script>
-<script>
-
-
 /* =========================
-   INVENTORY STORAGE
+   SUBMIT
 ========================= */
-
-
-let inventory =
-JSON.parse(
-localStorage.getItem("inventory")
-)
-||
-[];
-
-
-
-
-const tableBody =
-document.querySelector(
-"#inventoryTable tbody"
-);
-
-
-
-const locationInput =
-document.getElementById(
-"location"
-);
-
-
-
-const podrumCheckbox =
-document.getElementById(
-"podrum"
-);
-
-
-
-const sistemSalaCheckbox =
-document.getElementById(
-"sistemsala"
-);
-
-
-
-const conditionInput =
-document.getElementById(
-"condition"
-);
-
-
-
-const descriptionInput =
-document.getElementById(
-"description"
-);
-
-
-
-/* =========================
-   LOCATION CHECKBOX LOGIC
-========================= */
-
-
-function updateLocation(){
-
-
-if(podrumCheckbox.checked){
-
-
-locationInput.value =
-"Подрум";
-
-
-locationInput.disabled=true;
-
-
-locationInput.removeAttribute(
-"required"
-);
-
-
-
-sistemSalaCheckbox.checked=false;
-
-
-}
-
-
-
-else if(
-sistemSalaCheckbox.checked
-){
-
-
-locationInput.value =
-"Систем сала";
-
-
-locationInput.disabled=true;
-
-
-locationInput.removeAttribute(
-"required"
-);
-
-
-
-podrumCheckbox.checked=false;
-
-
-
-}
-
-
-else{
-
-
-locationInput.value="";
-
-
-locationInput.disabled=false;
-
-
-locationInput.setAttribute(
-"required",
-true
-);
-
-
-
-}
-
-
-}
-
-
-
-
-
-podrumCheckbox
-.addEventListener(
-"change",
-updateLocation
-);
-
-
-
-sistemSalaCheckbox
-.addEventListener(
-"change",
-updateLocation
-);
-
-
-
-
-
-
-
-/* =========================
-   TABLE DISPLAY
-========================= */
-
-
-function renderTable(){
-
-
-
-tableBody.innerHTML="";
-
-
-
-inventory.forEach(item=>{
-
-
-let row =
-document.createElement(
-"tr"
-);
-
-
-
-row.innerHTML = `
-
-<td>
-${item.barcode}
-</td>
-
-
-<td>
-${item.location}
-</td>
-
-
-<td>
-${item.condition}
-</td>
-
-
-<td>
-${item.description}
-</td>
-
-
-`;
-
-
-
-tableBody.appendChild(row);
-
-
-
+document.getElementById("inventoryForm").addEventListener("submit", e => {
+  e.preventDefault();
+
+  const entry = {
+    barcode: barcodeInput.value,
+    location: locationInput.value,
+    condition: document.getElementById("condition").value,
+    description: document.getElementById("description").value
+  };
+
+  if (!entry.barcode) {
+    showMessage("Скенирај баркод!", true);
+    return;
+  }
+
+  const webAppUrl = "https://script.google.com/macros/s/AKfycbxb1pxZxUrmITmtLZF6wIaCQaJ9pFYA2AqbP0HMBgAA5zp2RO-fC0Ik0aSk4R_0J7JeMQ/exec";
+
+  fetch(webAppUrl, {
+    method: "POST",
+    body: JSON.stringify(entry)
+  })
+  .then(res => res.text())
+  .then(text => {
+    let response;
+    try { response = JSON.parse(text); }
+    catch { response = { status:"error", message:text }; }
+
+    if (response.status === "success") {
+      inventory.push(entry);
+      renderTable();
+
+      document.getElementById("inventoryForm").reset();
+
+      locationInput.disabled = false;
+      locationInput.setAttribute("required", true);
+
+      barcodeInput.value = "";
+      lastScanned = null;
+
+      showMessage("Зачувано!");
+    } else {
+      showMessage("Error: " + response.message, true);
+    }
+  })
+  .catch(() => {
+    showMessage("Грешка при зачувување!", true);
+  });
 });
-
-
-
-}
-
-
-
-
-
-renderTable();
-
-
-
-
-
-
-
-/* =========================
-   GOOGLE SHEET URL
-========================= */
-
-
-const webAppUrl =
-
-"https://script.google.com/macros/s/AKfycbxb1pxZxUrmITmtLZF6wIaCQaJ9pFYA2AqbP0HMBgAA5zp2RO-fC0Ik0aSk4R_0J7JeMQ/exec";
-
-
-
-
-
-
-
-/* =========================
-   SAVE FORM
-========================= */
-
-
-document
-.getElementById(
-"inventoryForm"
-)
-.addEventListener(
-"submit",
-async function(e){
-
-
-e.preventDefault();
-
-
-
-const entry={
-
-
-
-barcode:
-document.getElementById(
-"barcode"
-).value,
-
-
-
-location:
-locationInput.value,
-
-
-
-condition:
-conditionInput.value,
-
-
-
-description:
-descriptionInput.value,
-
-
-
-date:
-new Date()
-.toLocaleString(
-"mk-MK"
-)
-
-
-
-};
-
-
-
-
-
-if(!entry.barcode){
-
-
-showMessage(
-"Скенирај баркод!",
-true
-);
-
-
-return;
-
-
-}
-
-
-
-
-
-if(!entry.location){
-
-
-showMessage(
-"Внесете локација!",
-true
-);
-
-
-return;
-
-
-}
-
-
-
-
-
-
-
-/*
-SAVE LOCAL FIRST
-*/
-
-
-inventory.push(entry);
-
-
-
-localStorage.setItem(
-
-"inventory",
-
-JSON.stringify(
-inventory
-)
-
-);
-
-
-
-renderTable();
-
-
-
-
-
-
-
-/*
-SEND TO GOOGLE SHEETS
-*/
-
-
-try{
-
-
-let response =
-await fetch(
-webAppUrl,
-{
-
-
-method:"POST",
-
-
-headers:{
-
-
-"Content-Type":
-"application/json"
-
-
-},
-
-
-body:
-JSON.stringify(entry)
-
-
-
-}
-
-);
-
-
-
-let text =
-await response.text();
-
-
-
-console.log(
-text
-);
-
-
-
-showMessage(
-"Зачувано!"
-);
-
-
-
-
-
-}
-
-catch(error){
-
-
-
-showMessage(
-"Локално зачувано - Google грешка",
-true
-);
-
-
-
-}
-
-
-
-
-
-
-/*
-RESET FORM
-*/
-
-
-document
-.getElementById(
-"inventoryForm"
-)
-.reset();
-
-
-
-locationInput.disabled=false;
-
-
-locationInput.setAttribute(
-"required",
-true
-);
-
-
-
-document
-.getElementById(
-"barcode"
-)
-.value="";
-
-
-
-lastScanned="";
-
-
-
-conditionInput.value="";
-
-
-
-descriptionInput.value="";
-
-
-
-});
-
-
-
-
-
-
-
 </script>
-
-
-
-
-<footer style="
-margin-top:40px;
-text-align:center;
-font-size:14px;
-color:#666;
-padding:20px;
-">
-
-
-© 2026 GorgiKo. Сите права задржани.
-
-
+ <footer style="margin-top:40px; text-align:center; font-size:14px; color:#666;">
+  © 2026 GorgiKo. Сите права задржани.
 </footer>
-
-
-
 </body>
 </html>
