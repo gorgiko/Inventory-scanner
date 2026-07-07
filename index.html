@@ -229,7 +229,7 @@ const html5QrCode = new Html5Qrcode("scanner");
 
 const config = { 
   fps: 20,
-  qrbox: 250,
+  qrbox: 500,
   formatsToSupport: [
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.DATA_MATRIX,
@@ -242,7 +242,7 @@ const config = {
 };
 
 function onScanSuccess(decodedText) {
-  if (decodedText !== lastScanned) {
+
 
     initAudio();
     playBeep(); // 🔊 industrial beep
@@ -252,7 +252,6 @@ function onScanSuccess(decodedText) {
     scannerDiv.classList.add("success");
     setTimeout(() => scannerDiv.classList.remove("success"), 200);
 
-    lastScanned = decodedText;
   }
 }
 
