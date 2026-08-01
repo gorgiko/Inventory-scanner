@@ -227,17 +227,34 @@ function renderTable() {
 ========================= */
 const html5QrCode = new Html5Qrcode("scanner");
 
-const config = { 
-  fps: 10,
-  qrbox: 250,
-  formatsToSupport: [
-    Html5QrcodeSupportedFormats.QR_CODE,
-    Html5QrcodeSupportedFormats.DATA_MATRIX,
-    Html5QrcodeSupportedFormats.PDF_417,
-    Html5QrcodeSupportedFormats.AZTEC
-  ],
-  experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+const config = {
+    fps: 20,
+
+    qrbox: function(width, height) {
+        let size = Math.min(width, height) * 0.75;
+        return {
+            width: size,
+            height: size
+        };
+    },
+
+    aspectRatio: 1.777777,
+
+    formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.DATA_MATRIX
+    ],
+
+    experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true
+    }
 };
+
 
 function onScanSuccess(decodedText) {
   if (decodedText !== lastScanned) {
@@ -256,7 +273,7 @@ function onScanSuccess(decodedText) {
 
 function startScanner() {
   html5QrCode.start(
-    { facingMode: { exact: "environment" } },
+    { facingMode:"environment"  },
     config,
     onScanSuccess
   ).catch(() => {
