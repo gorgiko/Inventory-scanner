@@ -10,13 +10,18 @@
     font-family: Arial, sans-serif;
     margin: 20px;
   }
-<div id="scanner"></div>
-<div id="scanBox"></div>
 
 #scanner {
     position: fixed;
     inset: 0;
     background: #000;
+    z-index: 1;
+}
+
+#scanner video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
 }
 
 #scanBox {
@@ -26,10 +31,11 @@
     width: 320px;
     height: 180px;
     transform: translate(-50%, -50%);
-    border: 4px solid lime;
+    border: 4px solid #00ff00;
     border-radius: 12px;
+    box-shadow: 0 0 20px #00ff00;
     pointer-events: none;
-    z-index: 1000;
+    z-index: 9999;
 }
 
 
@@ -75,8 +81,9 @@
 <h2>Баркод скенер за попис на ОС</h2>
 
 <div id="scanner"></div>
-<div id="message"></div>
+<div id="scanBox"></div>
 
+<div id="message"></div>
 <form id="inventoryForm">
   <input type="text" id="barcode" placeholder="Инвентарен број" readonly>
 
