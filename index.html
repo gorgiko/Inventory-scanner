@@ -254,15 +254,41 @@ function onScanSuccess(decodedText) {
   }
 }
 
-function startScanner() {
-  html5QrCode.start(
-    { facingMode: { exact: "environment" } },
-    config,
+function startScanner(){
+
+html5QrCode.start(
+    cameraConfig,
+    {
+        fps: 15,
+        qrbox: function(viewfinderWidth, viewfinderHeight){
+
+            let minEdge = Math.min(
+                viewfinderWidth,
+                viewfinderHeight
+            );
+
+            return {
+                width: minEdge * 0.75,
+                height: minEdge * 0.75
+            };
+        },
+
+        aspectRatio: 1.777778,
+
+        experimentalFeatures:{
+            useBarCodeDetectorIfSupported:true
+        }
+    },
+
     onScanSuccess
-  ).catch(() => {
-    html5QrCode.start({ facingMode: "user" }, config, onScanSuccess);
-  });
+)
+
+.catch(err=>{
+    console.log(err);
+});
+
 }
+
 
 startScanner();
 
