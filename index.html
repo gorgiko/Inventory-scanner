@@ -11,13 +11,15 @@
     margin: 20px;
   }
 
-  #scanner {
-    width: 100%;
-    max-width: 400px;
-    margin-bottom: 20px;
-    border: 2px solid #ccc;
-  }
-
+ #scanner{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+    background:#000;
+    z-index:9999;
+}
   #scanner.success {
     border-color: green;
   }
@@ -225,46 +227,125 @@ function renderTable() {
 /* =========================
    SCANNER
 ========================= */
+/* =========================
+   SCANNER
+========================= */
+
 const html5QrCode = new Html5Qrcode("scanner");
 
-const config = { 
-  fps: 10,
-  qrbox: 250,
+const config = {
+  fps: 15,
+  aspectRatio: 1.7778,
+  disableFlip: true,
+
+  // Scan the entire camera preview
+  qrbox: undefined,
+
+  rememberLastUsedCamera: true,
+
+  experimentalFeatures: {
+    useBarCodeDetectorIfSupported: true
+  },
+
   formatsToSupport: [
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.DATA_MATRIX,
     Html5QrcodeSupportedFormats.PDF_417,
-    Html5QrcodeSupportedFormats.AZTEC
-  ],
-  experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    Html5QrcodeSupportedFormats.AZTEC,
+
+    // Add 1D barcodes
+    Html5QrcodeSupportedFormats.CODE_128,
+    Html5QrcodeSupportedFormats.CODE_39,
+    Html5QrcodeSupportedFormats.CODE_93,
+    Html5QrcodeSupportedFormats.CODABAR,
+    Html5QrcodeSupportedFormats.EAN_13,
+    Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.ITF,
+    Html5QrcodeSupportedFormats.UPC_A,
+    Html5QrcodeSupportedFormats.UPC_E
+  ]
 };
 
 function onScanSuccess(decodedText) {
-  if (decodedText !== lastScanned) {
+
+    if (decodedText === lastScanned) return;
+
+    lastScanned = decodedText;
 
     initAudio();
-    playBeep(); // 🔊 industrial beep
+    playBeep();
 
     barcodeInput.value = decodedText;
 
     scannerDiv.classList.add("success");
-    setTimeout(() => scannerDiv.classList.remove("success"), 200);
 
-    lastScanned = decodedText;
-  }
+    setTimeout(() => {
+        scannerDiv.classList.remove("success");
+    }, 200);
+
 }
 
-function startScanner() {
-  html5QrCode.start(
-    { facingMode: { exact: "environment" } },
-    config,
-    onScanSuccess
-  ).catch(() => {
-    html5QrCode.start({ facingMode: "user" }, config, onScanSuccess);
-  });
+
+async function startScanner() {
+
+    try {
+
+        const cameras = await Html5Qrcode.getCameras();
+
+        if (cameras && cameras.length) {
+
+            // Try to find the rear camera
+            const rearCamera =
+                cameras.find(c =>
+                    c.label.toLowerCase().includes("back") ||
+                    c.label.toLowerCase().includes("rear") ||
+                    c.label.toLowerCase().includes("environment")
+                ) || cameras[cameras.length - 1];
+
+            await html5QrCode.start(
+                rearCamera.id,
+                config,
+                onScanSuccess
+            );
+
+        } else {
+
+            await html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess
+            );
+
+        }
+
+    } catch (e) {
+
+        console.log("Rear camera failed:", e);
+
+        try {
+
+            await html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess
+            );
+
+        } catch {
+
+            await html5QrCode.start(
+                { facingMode: "user" },
+                config,
+                onScanSuccess
+            );
+
+        }
+
+    }
+
 }
 
 startScanner();
+
 
 /* =========================
    SUBMIT
