@@ -11,12 +11,21 @@
     margin: 20px;
   }
 
- #scanner {
-    width: 100%;
-    max-width: 400px;
-    margin-bottom: 20px;
-    border: 2px solid #ccc;
-  }
+#scanner{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+    background:#000;
+    z-index:9999;
+}
+
+#scanner video{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover;
+}
   #scanner.success {
     border-color: green;
   }
